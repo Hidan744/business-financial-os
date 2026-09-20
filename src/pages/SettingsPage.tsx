@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ImportPanel } from '@/features/import/ImportPanel'
 import { useBusinessStore } from '@/store/businessStore'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 
@@ -108,6 +109,8 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ImportPanel />
 
       <Card className="border-negative-500/30">
         <CardHeader>
