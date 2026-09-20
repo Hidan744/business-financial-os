@@ -2,11 +2,12 @@ import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/layout/AppShell'
-import { useBusinessStore } from '@/store/businessStore'
+import { useAuthStore } from '@/store/authStore'
 import { LandingPage } from '@/pages/LandingPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 
+const AuthPage = lazy(() => import('@/pages/AuthPage').then((m) => ({ default: m.AuthPage })))
 const FinancePage = lazy(() => import('@/pages/FinancePage').then((m) => ({ default: m.FinancePage })))
 const CashflowPage = lazy(() => import('@/pages/CashflowPage').then((m) => ({ default: m.CashflowPage })))
 const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
@@ -22,11 +23,11 @@ function RouteFallback() {
 }
 
 function App() {
-  const hydrate = useBusinessStore((s) => s.hydrate)
+  const init = useAuthStore((s) => s.init)
 
   useEffect(() => {
-    hydrate()
-  }, [hydrate])
+    init()
+  }, [init])
 
   return (
     <TooltipProvider>
@@ -34,6 +35,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/app" element={<AppShell />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />

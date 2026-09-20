@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useBusinessStore } from '@/store/businessStore'
-import { generateId } from '@/lib/id'
+import { generateBusinessId, generateId } from '@/lib/id'
 import type { BusinessType, AnalysisPeriod } from '@/types/business'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 import type { FinancialInputs } from '@/types/finance'
@@ -102,7 +102,7 @@ export function OnboardingPage() {
       return
     }
     setSubmitting(true)
-    const businessId = generateId('biz')
+    const businessId = generateBusinessId()
     const period = new Date().toISOString().slice(0, 7)
 
     const financialInputs: FinancialInputs = {

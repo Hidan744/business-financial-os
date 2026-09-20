@@ -4,7 +4,7 @@ import type { CashFlowInputs, CustomExpenseLine, FinancialInputs } from '@/types
 import type { AiCfoMessage } from '@/types/ai'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
-import { financeRepository } from '@/lib/storage/localStorageRepository'
+import { getActiveRepository } from '@/lib/storage/activeRepository'
 import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
 import { createUrbanCoffeeDemo } from '@/lib/demo/urbanCoffee'
 import { generateId } from '@/lib/id'
@@ -79,7 +79,7 @@ function deriveBusinessList(businesses: Record<string, BusinessState>): Business
 async function persist(get: () => Store) {
   const { businesses, activeBusinessId } = get()
   const state: MultiBusinessState = { activeBusinessId, businesses }
-  await financeRepository.save(state)
+  await getActiveRepository().save(state)
 }
 
 /** Обновляет данные активного бизнеса, пересчитывает производные поля и сохраняет. */
@@ -108,7 +108,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   aiHistory: [],
 
   hydrate: async () => {
-    const saved = await financeRepository.load()
+    const saved = await getActiveRepository().load()
     const businesses = saved?.businesses ?? {}
     const hasBusinesses = Object.keys(businesses).length > 0
     const activeBusinessId = saved?.activeBusinessId && businesses[saved.activeBusinessId] ? saved.activeBusinessId : Object.keys(businesses)[0] ?? null
@@ -234,7 +234,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   },
 
   resetAll: async () => {
-    await financeRepository.clear()
+    await getActiveRepository().clear()
     set({
       status: 'onboarding',
       businesses: {},

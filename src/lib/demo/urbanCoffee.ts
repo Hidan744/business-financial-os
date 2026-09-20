@@ -3,8 +3,12 @@ import { DEFAULT_FORECAST_CONFIG, STANDARD_SCENARIOS } from '@/types/scenario'
 
 const CURRENT_PERIOD = new Date().toISOString().slice(0, 7)
 
+// Фиксированный валидный UUID — id используется как первичный ключ (uuid) в Supabase,
+// а фиксированное значение делает loadDemo() идемпотентным (повторный вызов не дублирует бизнес).
+const DEMO_BUSINESS_ID = '00000000-0000-4000-8000-000000000001'
+
 export function createUrbanCoffeeDemo(): BusinessState {
-  const businessId = 'demo_urban_coffee'
+  const businessId = DEMO_BUSINESS_ID
 
   return {
     profile: {

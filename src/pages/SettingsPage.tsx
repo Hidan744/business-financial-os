@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { Cloud, LogOut, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ImportPanel } from '@/features/import/ImportPanel'
 import { useBusinessStore } from '@/store/businessStore'
+import { useAuthStore } from '@/store/authStore'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 
 const CURRENCIES = [
@@ -23,6 +24,10 @@ export function SettingsPage() {
   const updateProfile = useBusinessStore((s) => s.updateProfile)
   const removeBusiness = useBusinessStore((s) => s.removeBusiness)
   const resetAll = useBusinessStore((s) => s.resetAll)
+  const authStatus = useAuthStore((s) => s.status)
+  const authUser = useAuthStore((s) => s.user)
+  const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
+  const signOut = useAuthStore((s) => s.signOut)
 
   if (!profile) return null
 
@@ -119,6 +124,36 @@ export function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {cloudEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              <Cloud className="size-4" /> Аккаунт
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            {authStatus === 'authenticated' && authUser ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-ink-100">{authUser.email}</div>
+                  <div className="text-xs text-positive-500 mt-0.5">Данные синхронизируются в облаке</div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => signOut()}>
+                  <LogOut className="size-4" /> Выйти
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-ink-400">Данные хранятся только в этом браузере.</p>
+                <Button size="sm" onClick={() => navigate('/auth')}>
+                  Войти / Зарегистрироваться
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <ImportPanel />
 
