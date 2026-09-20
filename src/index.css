@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+
+  --color-ink-950: #0a0b0f;
+  --color-ink-900: #12141a;
+  --color-ink-800: #1b1e27;
+  --color-ink-700: #262a36;
+  --color-ink-600: #363c4a;
+  --color-ink-500: #4b5262;
+  --color-ink-400: #6b7280;
+  --color-ink-300: #9aa1b0;
+  --color-ink-200: #c4c9d4;
+  --color-ink-100: #e5e7eb;
+  --color-ink-50: #f7f8fa;
+
+  --color-positive-500: #22c55e;
+  --color-positive-600: #16a34a;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-negative-500: #ef4444;
+  --color-negative-600: #dc2626;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-ink-800);
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-ink-950 text-ink-50 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    @apply bg-brand-500/30 text-white;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-ink-700 rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
