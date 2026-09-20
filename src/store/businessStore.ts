@@ -5,12 +5,17 @@ import type { AiCfoMessage } from '@/types/ai'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { financeRepository } from '@/lib/storage/localStorageRepository'
-import type { BusinessState } from '@/lib/storage/repository'
+import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
 import { createUrbanCoffeeDemo } from '@/lib/demo/urbanCoffee'
 import { generateId } from '@/lib/id'
 
 interface Store {
   status: 'loading' | 'onboarding' | 'ready'
+  businesses: Record<string, BusinessState>
+  activeBusinessId: string | null
+  businessList: BusinessProfile[]
+
+  // Удобный доступ к активному бизнесу — большинство страниц читают именно эти поля.
   profile: BusinessProfile | null
   financialInputs: FinancialInputs | null
   cashFlowInputs: CashFlowInputs | null
@@ -20,7 +25,10 @@ interface Store {
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
+  /** Добавляет новый бизнес (первый — через онбординг, или ещё один через переключатель) и делает его активным. */
   completeOnboarding: (profile: BusinessProfile, financialInputs: FinancialInputs) => Promise<void>
+  switchBusiness: (businessId: string) => Promise<void>
+  removeBusiness: (businessId: string) => Promise<void>
   updateFinancialInputs: (patch: Partial<FinancialInputs>) => Promise<void>
   updateCashFlowInputs: (patch: Partial<CashFlowInputs>) => Promise<void>
   addExpenseLine: (line: Omit<CustomExpenseLine, 'id'>) => Promise<void>
@@ -50,23 +58,48 @@ function emptyCashFlow(businessId: string, period: string): CashFlowInputs {
   }
 }
 
-async function persist(get: () => Store) {
-  const s = get()
-  if (!s.profile || !s.financialInputs || !s.cashFlowInputs) return
-  const state: BusinessState = {
-    profile: s.profile,
-    financialInputs: s.financialInputs,
-    cashFlowInputs: s.cashFlowInputs,
-    scenarios: s.scenarios,
-    forecastConfig: s.forecastConfig,
-    aiHistory: s.aiHistory,
-    onboardingComplete: true,
+function deriveActiveFields(businesses: Record<string, BusinessState>, activeBusinessId: string | null) {
+  const active = activeBusinessId ? businesses[activeBusinessId] : undefined
+  return {
+    profile: active?.profile ?? null,
+    financialInputs: active?.financialInputs ?? null,
+    cashFlowInputs: active?.cashFlowInputs ?? null,
+    scenarios: active?.scenarios ?? STANDARD_SCENARIOS,
+    forecastConfig: active?.forecastConfig ?? DEFAULT_FORECAST_CONFIG,
+    aiHistory: active?.aiHistory ?? [],
   }
+}
+
+function deriveBusinessList(businesses: Record<string, BusinessState>): BusinessProfile[] {
+  return Object.values(businesses)
+    .map((b) => b.profile)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+}
+
+async function persist(get: () => Store) {
+  const { businesses, activeBusinessId } = get()
+  const state: MultiBusinessState = { activeBusinessId, businesses }
   await financeRepository.save(state)
+}
+
+/** Обновляет данные активного бизнеса, пересчитывает производные поля и сохраняет. */
+async function mutateActiveBusiness(
+  get: () => Store,
+  set: (partial: Partial<Store>) => void,
+  updater: (business: BusinessState) => BusinessState,
+) {
+  const { businesses, activeBusinessId } = get()
+  if (!activeBusinessId || !businesses[activeBusinessId]) return
+  const nextBusinesses = { ...businesses, [activeBusinessId]: updater(businesses[activeBusinessId]) }
+  set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
+  await persist(get)
 }
 
 export const useBusinessStore = create<Store>((set, get) => ({
   status: 'loading',
+  businesses: {},
+  activeBusinessId: null,
+  businessList: [],
   profile: null,
   financialInputs: null,
   cashFlowInputs: null,
@@ -76,33 +109,31 @@ export const useBusinessStore = create<Store>((set, get) => ({
 
   hydrate: async () => {
     const saved = await financeRepository.load()
-    if (saved) {
-      set({
-        status: 'ready',
-        profile: saved.profile,
-        financialInputs: saved.financialInputs,
-        cashFlowInputs: saved.cashFlowInputs,
-        scenarios: saved.scenarios,
-        forecastConfig: saved.forecastConfig,
-        aiHistory: saved.aiHistory,
-      })
-    } else {
-      set({ status: 'onboarding' })
-    }
+    const businesses = saved?.businesses ?? {}
+    const hasBusinesses = Object.keys(businesses).length > 0
+    const activeBusinessId = saved?.activeBusinessId && businesses[saved.activeBusinessId] ? saved.activeBusinessId : Object.keys(businesses)[0] ?? null
+
+    set({
+      status: hasBusinesses ? 'ready' : 'onboarding',
+      businesses,
+      activeBusinessId,
+      businessList: deriveBusinessList(businesses),
+      ...deriveActiveFields(businesses, activeBusinessId),
+    })
   },
 
   loadDemo: async () => {
     const demo = createUrbanCoffeeDemo()
+    const demoId = demo.profile.id
+    const businesses = { ...get().businesses, [demoId]: demo }
     set({
       status: 'ready',
-      profile: demo.profile,
-      financialInputs: demo.financialInputs,
-      cashFlowInputs: demo.cashFlowInputs,
-      scenarios: demo.scenarios,
-      forecastConfig: demo.forecastConfig,
-      aiHistory: demo.aiHistory,
+      businesses,
+      activeBusinessId: demoId,
+      businessList: deriveBusinessList(businesses),
+      ...deriveActiveFields(businesses, demoId),
     })
-    await financeRepository.save(demo)
+    await persist(get)
   },
 
   completeOnboarding: async (profile, financialInputs) => {
@@ -117,73 +148,98 @@ export const useBusinessStore = create<Store>((set, get) => ({
       financialInputs.logistics + financialInputs.utilities + financialInputs.software
     cashFlowInputs.financing.loanRepaid = financialInputs.loanPayments
 
-    set({
-      status: 'ready',
+    const newBusiness: BusinessState = {
       profile,
       financialInputs,
       cashFlowInputs,
       scenarios: STANDARD_SCENARIOS,
       forecastConfig: DEFAULT_FORECAST_CONFIG,
       aiHistory: [],
+      onboardingComplete: true,
+    }
+
+    const businesses = { ...get().businesses, [profile.id]: newBusiness }
+    set({
+      status: 'ready',
+      businesses,
+      activeBusinessId: profile.id,
+      businessList: deriveBusinessList(businesses),
+      ...deriveActiveFields(businesses, profile.id),
+    })
+    await persist(get)
+  },
+
+  switchBusiness: async (businessId) => {
+    const { businesses } = get()
+    if (!businesses[businessId]) return
+    set({ activeBusinessId: businessId, ...deriveActiveFields(businesses, businessId) })
+    await persist(get)
+  },
+
+  removeBusiness: async (businessId) => {
+    const { businesses, activeBusinessId } = get()
+    if (!businesses[businessId]) return
+    const nextBusinesses = { ...businesses }
+    delete nextBusinesses[businessId]
+    const remainingIds = Object.keys(nextBusinesses)
+    const nextActiveId = activeBusinessId === businessId ? (remainingIds[0] ?? null) : activeBusinessId
+
+    set({
+      status: remainingIds.length > 0 ? 'ready' : 'onboarding',
+      businesses: nextBusinesses,
+      activeBusinessId: nextActiveId,
+      businessList: deriveBusinessList(nextBusinesses),
+      ...deriveActiveFields(nextBusinesses, nextActiveId),
     })
     await persist(get)
   },
 
   updateFinancialInputs: async (patch) => {
-    const current = get().financialInputs
-    if (!current) return
-    set({ financialInputs: { ...current, ...patch } })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, financialInputs: { ...b.financialInputs, ...patch } }))
   },
 
   updateCashFlowInputs: async (patch) => {
-    const current = get().cashFlowInputs
-    if (!current) return
-    set({ cashFlowInputs: { ...current, ...patch } })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, cashFlowInputs: { ...b.cashFlowInputs, ...patch } }))
   },
 
   addExpenseLine: async (line) => {
-    const current = get().financialInputs
-    if (!current) return
     const newLine = { ...line, id: generateId('exp') }
-    set({ financialInputs: { ...current, customExpenseLines: [...current.customExpenseLines, newLine] } })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      financialInputs: { ...b.financialInputs, customExpenseLines: [...b.financialInputs.customExpenseLines, newLine] },
+    }))
   },
 
   removeExpenseLine: async (id) => {
-    const current = get().financialInputs
-    if (!current) return
-    set({
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
       financialInputs: {
-        ...current,
-        customExpenseLines: current.customExpenseLines.filter((l) => l.id !== id),
+        ...b.financialInputs,
+        customExpenseLines: b.financialInputs.customExpenseLines.filter((l) => l.id !== id),
       },
-    })
-    await persist(get)
+    }))
   },
 
   updateProfile: async (patch) => {
-    const current = get().profile
-    if (!current) return
-    set({ profile: { ...current, ...patch } })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, profile: { ...b.profile, ...patch } }))
+    set({ businessList: deriveBusinessList(get().businesses) })
   },
 
   setForecastConfig: async (config) => {
-    set({ forecastConfig: config })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, forecastConfig: config }))
   },
 
   addAiMessage: async (message) => {
-    set({ aiHistory: [...get().aiHistory, message] })
-    await persist(get)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, aiHistory: [...b.aiHistory, message] }))
   },
 
   resetAll: async () => {
     await financeRepository.clear()
     set({
       status: 'onboarding',
+      businesses: {},
+      activeBusinessId: null,
+      businessList: [],
       profile: null,
       financialInputs: null,
       cashFlowInputs: null,

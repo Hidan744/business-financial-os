@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useBusinessStore } from '@/store/businessStore'
+import { BusinessSwitcher } from './BusinessSwitcher'
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -29,18 +29,17 @@ const NAV_ITEMS = [
 ]
 
 export function Sidebar() {
-  const businessName = useBusinessStore((s) => s.profile?.name)
-
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
       <div className="flex items-center gap-2 px-5 h-16 border-b border-ink-800">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400 shrink-0">
           <Sparkles className="size-4" />
         </div>
-        <div className="leading-tight">
-          <div className="text-sm font-semibold text-ink-50">Business Financial OS</div>
-          <div className="text-xs text-ink-500 truncate max-w-40">{businessName ?? 'Ваш бизнес'}</div>
-        </div>
+        <div className="text-sm font-semibold text-ink-50 truncate">Business Financial OS</div>
+      </div>
+
+      <div className="px-3 pt-3">
+        <BusinessSwitcher />
       </div>
 
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-3 space-y-1">

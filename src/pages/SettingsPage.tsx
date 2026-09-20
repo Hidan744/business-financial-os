@@ -19,13 +19,23 @@ const CURRENCIES = [
 export function SettingsPage() {
   const navigate = useNavigate()
   const profile = useBusinessStore((s) => s.profile)
+  const businessList = useBusinessStore((s) => s.businessList)
   const updateProfile = useBusinessStore((s) => s.updateProfile)
+  const removeBusiness = useBusinessStore((s) => s.removeBusiness)
   const resetAll = useBusinessStore((s) => s.resetAll)
 
   if (!profile) return null
 
+  const hasOtherBusinesses = businessList.length > 1
+
+  async function handleRemoveCurrent() {
+    if (!profile) return
+    if (!window.confirm(`Удалить бизнес «${profile.name}»? Это действие необратимо.`)) return
+    await removeBusiness(profile.id)
+  }
+
   async function handleReset() {
-    if (!window.confirm('Удалить все данные бизнеса из этого браузера? Это действие необратимо.')) return
+    if (!window.confirm('Удалить все данные всех бизнесов из этого браузера? Это действие необратимо.')) return
     await resetAll()
     navigate('/onboarding')
   }
@@ -116,13 +126,25 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle className="text-negative-500">Опасная зона</CardTitle>
         </CardHeader>
-        <CardContent className="pt-2">
-          <p className="text-sm text-ink-400 mb-4">
-            Удалить все данные бизнеса, сохранённые в этом браузере, и начать заново.
-          </p>
-          <Button variant="destructive" onClick={handleReset}>
-            <Trash2 className="size-4" /> Сбросить все данные
-          </Button>
+        <CardContent className="pt-2 space-y-4">
+          {hasOtherBusinesses && (
+            <div>
+              <p className="text-sm text-ink-400 mb-3">
+                Удалить только «{profile.name}» — остальные бизнесы останутся.
+              </p>
+              <Button variant="destructive" size="sm" onClick={handleRemoveCurrent}>
+                <Trash2 className="size-4" /> Удалить этот бизнес
+              </Button>
+            </div>
+          )}
+          <div>
+            <p className="text-sm text-ink-400 mb-3">
+              Удалить все данные всех бизнесов, сохранённые в этом браузере, и начать заново.
+            </p>
+            <Button variant="destructive" onClick={handleReset}>
+              <Trash2 className="size-4" /> Сбросить все данные
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

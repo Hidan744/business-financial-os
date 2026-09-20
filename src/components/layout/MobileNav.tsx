@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Menu, X, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BusinessSwitcher } from './BusinessSwitcher'
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard' },
@@ -38,6 +39,9 @@ export function MobileNav() {
             <button onClick={() => setOpen(false)} aria-label="Закрыть меню" className="text-ink-300">
               <X className="size-5" />
             </button>
+          </div>
+          <div className="px-3 pt-3">
+            <BusinessSwitcher />
           </div>
           <nav className="p-3 space-y-1">
             {NAV_ITEMS.map((item) => (

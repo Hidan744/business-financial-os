@@ -13,6 +13,12 @@ export interface BusinessState {
   onboardingComplete: boolean
 }
 
+/** Несколько бизнесов пользователя + указатель на активный. */
+export interface MultiBusinessState {
+  activeBusinessId: string | null
+  businesses: Record<string, BusinessState>
+}
+
 /**
  * Контракт хранилища данных бизнеса. Сейчас реализован через localStorage
  * (см. localStorageRepository.ts). Чтобы подключить backend (например Supabase),
@@ -20,7 +26,7 @@ export interface BusinessState {
  * (Zustand store) не изменится.
  */
 export interface FinanceRepository {
-  load(): Promise<BusinessState | null>
-  save(state: BusinessState): Promise<void>
+  load(): Promise<MultiBusinessState | null>
+  save(state: MultiBusinessState): Promise<void>
   clear(): Promise<void>
 }
