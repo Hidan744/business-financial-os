@@ -20,7 +20,7 @@ export function MobileNav() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="lg:hidden">
+    <div className="lg:hidden print:hidden">
       <div className="flex items-center justify-between h-14 px-4 border-b border-ink-800 bg-ink-950">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-brand-400" />
@@ -32,7 +32,7 @@ export function MobileNav() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 bg-ink-950/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 bg-ink-950">
           <div className="flex items-center justify-between h-14 px-4 border-b border-ink-800">
             <span className="text-sm font-semibold">Меню</span>
             <button onClick={() => setOpen(false)} aria-label="Закрыть меню" className="text-ink-300">

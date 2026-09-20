@@ -3,8 +3,11 @@ import type { ScenarioMultipliers } from '@/types/scenario'
 
 /**
  * Применяет мультипликаторы сценария к базовым исходным данным.
- * revenue пересчитывается из salesCount * avgCheck, чтобы модель оставалась
- * внутренне непротиворечивой (нет рассинхрона "выручка" vs "чек × продажи").
+ * Выручка масштабируется пропорционально изменению чека и количества продаж
+ * (base.revenue × avgCheck-множитель × salesCount-множитель), а не пересобирается
+ * из avgCheck × salesCount с нуля — в реальных данных пользователя эти два числа
+ * не обязаны давать точное произведение, и пересборка давала бы "фантомную"
+ * дельту выручки даже при нулевом изменении параметров.
  */
 export function calculateScenario(
   base: FinancialInputs,
@@ -12,7 +15,7 @@ export function calculateScenario(
 ): FinancialInputs {
   const avgCheck = base.avgCheck * multipliers.avgCheck
   const salesCount = base.salesCount * multipliers.salesCount
-  const revenue = avgCheck * salesCount * multipliers.revenue
+  const revenue = base.revenue * multipliers.avgCheck * multipliers.salesCount * multipliers.revenue
 
   return {
     ...base,

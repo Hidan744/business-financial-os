@@ -32,7 +32,7 @@ export function Sidebar() {
   const businessName = useBusinessStore((s) => s.profile?.name)
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0">
+    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
       <div className="flex items-center gap-2 px-5 h-16 border-b border-ink-800">
         <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
           <Sparkles className="size-4" />

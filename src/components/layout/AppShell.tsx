@@ -19,11 +19,11 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex min-h-screen bg-ink-950">
+    <div className="flex min-h-screen bg-ink-950 print:bg-white print:block">
       <Sidebar />
       <div className="flex-1 min-w-0">
         <MobileNav />
-        <main className="max-w-[1400px] mx-auto px-4 py-6 lg:px-8 lg:py-8">
+        <main className="max-w-[1400px] mx-auto px-4 py-6 lg:px-8 lg:py-8 print:max-w-none print:p-0">
           <Outlet />
         </main>
       </div>

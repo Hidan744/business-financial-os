@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppShell } from '@/components/layout/AppShell'
@@ -6,15 +6,20 @@ import { useBusinessStore } from '@/store/businessStore'
 import { LandingPage } from '@/pages/LandingPage'
 import { OnboardingPage } from '@/pages/OnboardingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { FinancePage } from '@/pages/FinancePage'
-import { CashflowPage } from '@/pages/CashflowPage'
-import { SimulatorPage } from '@/pages/SimulatorPage'
-import { SalesPage } from '@/pages/SalesPage'
-import { ForecastPage } from '@/pages/ForecastPage'
-import { AiCfoPage } from '@/pages/AiCfoPage'
-import { CrisisPage } from '@/pages/CrisisPage'
-import { ReportPage } from '@/pages/ReportPage'
-import { SettingsPage } from '@/pages/SettingsPage'
+
+const FinancePage = lazy(() => import('@/pages/FinancePage').then((m) => ({ default: m.FinancePage })))
+const CashflowPage = lazy(() => import('@/pages/CashflowPage').then((m) => ({ default: m.CashflowPage })))
+const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
+const SalesPage = lazy(() => import('@/pages/SalesPage').then((m) => ({ default: m.SalesPage })))
+const ForecastPage = lazy(() => import('@/pages/ForecastPage').then((m) => ({ default: m.ForecastPage })))
+const AiCfoPage = lazy(() => import('@/pages/AiCfoPage').then((m) => ({ default: m.AiCfoPage })))
+const CrisisPage = lazy(() => import('@/pages/CrisisPage').then((m) => ({ default: m.CrisisPage })))
+const ReportPage = lazy(() => import('@/pages/ReportPage').then((m) => ({ default: m.ReportPage })))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+
+function RouteFallback() {
+  return <div className="py-24 text-center text-sm text-ink-500">Загрузка…</div>
+}
 
 function App() {
   const hydrate = useBusinessStore((s) => s.hydrate)
@@ -25,24 +30,26 @@ function App() {
 
   return (
     <TooltipProvider>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/app" element={<AppShell />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="finance" element={<FinancePage />} />
-          <Route path="cashflow" element={<CashflowPage />} />
-          <Route path="simulator" element={<SimulatorPage />} />
-          <Route path="sales" element={<SalesPage />} />
-          <Route path="forecast" element={<ForecastPage />} />
-          <Route path="ai-cfo" element={<AiCfoPage />} />
-          <Route path="crisis" element={<CrisisPage />} />
-          <Route path="report" element={<ReportPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/app" element={<AppShell />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="finance" element={<FinancePage />} />
+            <Route path="cashflow" element={<CashflowPage />} />
+            <Route path="simulator" element={<SimulatorPage />} />
+            <Route path="sales" element={<SalesPage />} />
+            <Route path="forecast" element={<ForecastPage />} />
+            <Route path="ai-cfo" element={<AiCfoPage />} />
+            <Route path="crisis" element={<CrisisPage />} />
+            <Route path="report" element={<ReportPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </TooltipProvider>
   )
 }

@@ -1,4 +1,102 @@
-import { PlaceholderPage } from './PlaceholderPage'
+import { useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ParamSlider } from '@/features/simulator/ParamSlider'
+import { ForecastChart } from '@/features/forecast/ForecastChart'
+import { useFinancials } from '@/hooks/useFinancials'
+import { useBusinessStore } from '@/store/businessStore'
+import { calculateForecast } from '@/lib/finance/forecast'
+import { formatCurrency } from '@/lib/utils'
+
 export function ForecastPage() {
-  return <PlaceholderPage title="Прогноз" />
+  const { inputs } = useFinancials()
+  const profile = useBusinessStore((s) => s.profile)
+  const forecastConfig = useBusinessStore((s) => s.forecastConfig)
+  const setForecastConfig = useBusinessStore((s) => s.setForecastConfig)
+
+  const points = useMemo(() => {
+    if (!inputs) return []
+    return calculateForecast(inputs, forecastConfig, { currentEmployeesCount: profile?.employeesCount ?? 1 })
+  }, [inputs, forecastConfig, profile])
+
+  if (!inputs) return null
+
+  const totalRevenue = points.reduce((s, p) => s + p.revenue, 0)
+  const totalProfit = points.reduce((s, p) => s + p.netProfit, 0)
+  const endingCash = points.reduce((s, p) => s + p.cashFlow, 0)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-ink-50">Прогноз на 12 месяцев</h1>
+        <p className="text-sm text-ink-500 mt-1">Спроецируйте текущие показатели вперёд и настройте допущения.</p>
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Card className="p-4">
+          <div className="text-xs text-ink-400 mb-1">Выручка за 12 мес.</div>
+          <div className="text-lg font-semibold text-ink-50">{formatCurrency(totalRevenue)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-ink-400 mb-1">Прибыль за 12 мес.</div>
+          <div className={`text-lg font-semibold ${totalProfit >= 0 ? 'text-positive-500' : 'text-negative-500'}`}>
+            {formatCurrency(totalProfit)}
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-ink-400 mb-1">Cash Flow за 12 мес.</div>
+          <div className={`text-lg font-semibold ${endingCash >= 0 ? 'text-positive-500' : 'text-negative-500'}`}>
+            {formatCurrency(endingCash)}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Допущения</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 space-y-5">
+            <ParamSlider
+              label="Темп роста выручки, %/мес"
+              value={forecastConfig.monthlyGrowthRatePct}
+              min={-10}
+              max={15}
+              onChange={(v) => setForecastConfig({ ...forecastConfig, monthlyGrowthRatePct: v })}
+            />
+            <ParamSlider
+              label="Рост среднего чека, %/мес"
+              value={forecastConfig.avgCheckGrowthPct}
+              min={-5}
+              max={10}
+              onChange={(v) => setForecastConfig({ ...forecastConfig, avgCheckGrowthPct: v })}
+            />
+            <ParamSlider
+              label="Динамика рекламного бюджета, %/мес"
+              value={forecastConfig.marketingBudgetTrendPct}
+              min={-10}
+              max={20}
+              onChange={(v) => setForecastConfig({ ...forecastConfig, marketingBudgetTrendPct: v })}
+            />
+            <ParamSlider
+              label="Доп. сотрудников за 12 мес"
+              value={forecastConfig.employeesGrowth}
+              min={0}
+              max={10}
+              step={1}
+              onChange={(v) => setForecastConfig({ ...forecastConfig, employeesGrowth: v })}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Выручка, расходы, прибыль и Cash Flow</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ForecastChart points={points} />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
 }

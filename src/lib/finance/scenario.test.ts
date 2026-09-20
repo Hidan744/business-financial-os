@@ -32,6 +32,13 @@ describe('calculateScenario', () => {
     expect(result.salesCount).toBe(100)
   })
 
+  it('does not introduce a phantom revenue delta at neutral multipliers when avgCheck * salesCount != revenue', () => {
+    // Демо-данные Urban Coffee: 850 * 2824 = 2 400 400, но выручка указана как 2 400 000.
+    const inputs = { ...makeInputs(), revenue: 2400000, avgCheck: 850, salesCount: 2824 }
+    const result = calculateScenario(inputs, DEFAULT_MULTIPLIERS)
+    expect(result.revenue).toBe(2400000)
+  })
+
   it('recomputes revenue from avgCheck * salesCount to stay consistent', () => {
     const result = calculateScenario(makeInputs(), {
       ...DEFAULT_MULTIPLIERS,

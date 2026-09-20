@@ -22,12 +22,13 @@
   --color-ink-100: #e5e7eb;
   --color-ink-50: #f7f8fa;
 
-  --color-positive-500: #22c55e;
-  --color-positive-600: #16a34a;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-negative-500: #ef4444;
-  --color-negative-600: #dc2626;
+  /* Статусные цвета — валидированный набор (dataviz skill), различимый на тёмной поверхности и не путается с CVD */
+  --color-positive-500: #0ca30c;
+  --color-positive-600: #086b08;
+  --color-warning-500: #fab219;
+  --color-warning-600: #c98500;
+  --color-negative-500: #d03b3b;
+  --color-negative-600: #a82f2f;
 }
 
 @layer base {
