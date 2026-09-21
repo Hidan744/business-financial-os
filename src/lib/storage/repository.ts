@@ -5,6 +5,7 @@ import type { AiCfoMessage } from '@/types/ai'
 import type { Employee, PlannedHire } from '@/types/hr'
 import type { Goal } from '@/types/goal'
 import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
+import type { TaxSettings } from '@/types/tax'
 
 export interface BusinessState {
   profile: BusinessProfile
@@ -28,6 +29,8 @@ export interface BusinessState {
   goals: Goal[]
   /** Предположения для расчёта LTV/CAC (Unit Economics). */
   unitEconomics: UnitEconomicsAssumptions
+  /** Настройки налогового режима для калькулятора налогов. */
+  taxSettings: TaxSettings
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */

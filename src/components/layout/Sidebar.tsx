@@ -15,6 +15,7 @@ import {
   Users,
   Flag,
   Calculator,
+  Percent,
   FileText,
   Settings,
   Sparkles,
@@ -25,6 +26,7 @@ import { BusinessSwitcher } from './BusinessSwitcher'
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/app/finance', label: 'Финансы', icon: FileBarChart },
+  { to: '/app/taxes', label: 'Налоги', icon: Percent },
   { to: '/app/balance', label: 'Баланс', icon: Scale },
   { to: '/app/cashflow', label: 'Cash Flow', icon: Wallet },
   { to: '/app/history', label: 'История', icon: History },

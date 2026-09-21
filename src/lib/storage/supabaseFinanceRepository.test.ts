@@ -93,6 +93,14 @@ function makeBusiness(id: string, name: string): BusinessState {
     plannedHires: [],
     goals: [],
     unitEconomics: { purchaseFrequencyPerMonth: 1, monthlyChurnRatePct: 10, manualCac: null },
+    taxSettings: {
+      regime: 'usn_income',
+      usnIncomeRatePct: 6,
+      usnIncomeMinusExpensesRatePct: 15,
+      osnProfitTaxRatePct: 20,
+      npdRatePct: 6,
+      patentAnnualCost: 0,
+    },
   }
 }
 

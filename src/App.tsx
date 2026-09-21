@@ -13,6 +13,7 @@ const BalancePage = lazy(() => import('@/pages/BalancePage').then((m) => ({ defa
 const HRPage = lazy(() => import('@/pages/HRPage').then((m) => ({ default: m.HRPage })))
 const GoalsPage = lazy(() => import('@/pages/GoalsPage').then((m) => ({ default: m.GoalsPage })))
 const UnitEconomicsPage = lazy(() => import('@/pages/UnitEconomicsPage').then((m) => ({ default: m.UnitEconomicsPage })))
+const TaxesPage = lazy(() => import('@/pages/TaxesPage').then((m) => ({ default: m.TaxesPage })))
 const CashflowPage = lazy(() => import('@/pages/CashflowPage').then((m) => ({ default: m.CashflowPage })))
 const HistoryPage = lazy(() => import('@/pages/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
@@ -47,6 +48,7 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="taxes" element={<TaxesPage />} />
             <Route path="balance" element={<BalancePage />} />
             <Route path="hr" element={<HRPage />} />
             <Route path="goals" element={<GoalsPage />} />

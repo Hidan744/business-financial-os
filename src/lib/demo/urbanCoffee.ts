@@ -145,5 +145,13 @@ export function createUrbanCoffeeDemo(): BusinessState {
       monthlyChurnRatePct: 15,
       manualCac: null,
     },
+    taxSettings: {
+      regime: 'usn_income_minus_expenses',
+      usnIncomeRatePct: 6,
+      usnIncomeMinusExpensesRatePct: 15,
+      osnProfitTaxRatePct: 20,
+      npdRatePct: 6,
+      patentAnnualCost: 0,
+    },
   }
 }
