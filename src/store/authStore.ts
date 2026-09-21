@@ -87,7 +87,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   signUp: async (email, password) => {
     if (!supabase) return false
     set({ error: null })
-    const { error } = await supabase.auth.signUp({ email, password })
+    // Явно указываем адрес приложения для ссылки в письме — иначе Supabase подставляет
+    // Site URL из настроек проекта, который по умолчанию указывает на http://localhost:3000.
+    const emailRedirectTo = window.location.origin + import.meta.env.BASE_URL
+    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } })
     if (error) {
       set({ error: error.message })
       return false
