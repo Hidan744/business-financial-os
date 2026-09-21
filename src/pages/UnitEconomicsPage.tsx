@@ -14,6 +14,12 @@ import {
 } from '@/lib/finance/unitEconomics'
 import { formatCurrency } from '@/lib/utils'
 
+/** "0.0 мес." при очень маленьком, но положительном значении выглядит как ошибка — уточняем. */
+function formatMonths(value: number): string {
+  if (value > 0 && value < 0.1) return '< 0.1 мес.'
+  return `${value.toFixed(1)} мес.`
+}
+
 export function UnitEconomicsPage() {
   const { inputs, snapshot } = useFinancials()
   const unitEconomics = useBusinessStore((s) => s.unitEconomics)
@@ -146,7 +152,7 @@ export function UnitEconomicsPage() {
             />
             <ResultTile
               label="Payback period"
-              value={paybackMonths !== null ? `${paybackMonths.toFixed(1)} мес.` : '—'}
+              value={paybackMonths !== null ? formatMonths(paybackMonths) : '—'}
               tooltip="Через сколько месяцев валовая прибыль с клиента окупает стоимость его привлечения."
               accent={paybackMonths === null ? undefined : paybackMonths <= 12 ? 'positive' : 'neutral'}
             />
