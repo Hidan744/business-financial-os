@@ -1,18 +1,21 @@
-import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { ChevronDown, ChevronUp, KeyRound, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useBusinessStore } from '@/store/businessStore'
 import { calculateProjectedPayroll, calculateTotalPayroll } from '@/lib/finance/hr'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
+import { PROTECTABLE_ROUTES } from '@/types/access'
 
 export function HRPage() {
   const inputs = useBusinessStore((s) => s.financialInputs)
   const employees = useBusinessStore((s) => s.employees)
   const plannedHires = useBusinessStore((s) => s.plannedHires)
   const addEmployee = useBusinessStore((s) => s.addEmployee)
+  const updateEmployee = useBusinessStore((s) => s.updateEmployee)
   const removeEmployee = useBusinessStore((s) => s.removeEmployee)
   const addPlannedHire = useBusinessStore((s) => s.addPlannedHire)
   const removePlannedHire = useBusinessStore((s) => s.removePlannedHire)
@@ -26,6 +29,8 @@ export function HRPage() {
   const [hireRole, setHireRole] = useState('')
   const [hireSalary, setHireSalary] = useState('')
   const [hirePeriod, setHirePeriod] = useState('')
+
+  const [expandedAccessId, setExpandedAccessId] = useState<string | null>(null)
 
   if (!inputs) return null
 
@@ -41,6 +46,14 @@ export function HRPage() {
     setRole('')
     setSalary('')
     setHireDate('')
+  }
+
+  function toggleEmployeeRoute(employeeId: string, path: string) {
+    const employee = employees.find((e) => e.id === employeeId)
+    if (!employee) return
+    const current = employee.allowedRoutes ?? []
+    const next = current.includes(path) ? current.filter((p) => p !== path) : [...current, path]
+    updateEmployee(employeeId, { allowedRoutes: next })
   }
 
   function submitPlannedHire() {
@@ -94,27 +107,81 @@ export function HRPage() {
                     <th className="py-2 pr-4 font-medium">Должность</th>
                     <th className="py-2 pr-4 font-medium text-right">Зарплата</th>
                     <th className="py-2 pr-4 font-medium">Дата найма</th>
+                    <th className="py-2 pr-4 font-medium">Доступ</th>
                     <th className="py-2 pr-2 font-medium w-8" />
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.map((e) => (
-                    <tr key={e.id} className="border-b border-ink-800/60">
-                      <td className="py-2.5 pr-4 text-ink-200">{e.name}</td>
-                      <td className="py-2.5 pr-4 text-ink-300">{e.role}</td>
-                      <td className="py-2.5 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(e.salary)}</td>
-                      <td className="py-2.5 pr-4 text-ink-400">{e.hireDate}</td>
-                      <td className="py-2.5 pr-2 text-right">
-                        <button
-                          onClick={() => removeEmployee(e.id)}
-                          className="text-ink-500 hover:text-negative-500 transition-colors"
-                          aria-label={`Удалить ${e.name}`}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {employees.map((e) => {
+                    const isExpanded = expandedAccessId === e.id
+                    const allowedCount = e.allowedRoutes?.length ?? 0
+                    return (
+                      <Fragment key={e.id}>
+                        <tr className="border-b border-ink-800/60">
+                          <td className="py-2.5 pr-4 text-ink-200">{e.name}</td>
+                          <td className="py-2.5 pr-4 text-ink-300">{e.role}</td>
+                          <td className="py-2.5 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(e.salary)}</td>
+                          <td className="py-2.5 pr-4 text-ink-400">{e.hireDate}</td>
+                          <td className="py-2.5 pr-4">
+                            <button
+                              onClick={() => setExpandedAccessId(isExpanded ? null : e.id)}
+                              className={cn(
+                                'flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border transition-colors',
+                                e.pin
+                                  ? 'border-brand-500/30 text-brand-400 bg-brand-500/10'
+                                  : 'border-ink-700 text-ink-400 hover:text-ink-100',
+                              )}
+                            >
+                              <KeyRound className="size-3.5" />
+                              {e.pin ? `PIN · разд.: ${allowedCount}` : 'Не задан'}
+                              {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                            </button>
+                          </td>
+                          <td className="py-2.5 pr-2 text-right">
+                            <button
+                              onClick={() => removeEmployee(e.id)}
+                              className="text-ink-500 hover:text-negative-500 transition-colors"
+                              aria-label={`Удалить ${e.name}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="border-b border-ink-800/60 bg-ink-900/40">
+                            <td colSpan={6} className="py-4 px-4">
+                              <div className="max-w-sm mb-3">
+                                <label className="text-xs text-ink-400 block mb-1">PIN-код сотрудника</label>
+                                <Input
+                                  inputMode="numeric"
+                                  placeholder="Например, 4821"
+                                  value={e.pin ?? ''}
+                                  onChange={(ev) =>
+                                    updateEmployee(e.id, { pin: ev.target.value.replace(/\D/g, '').slice(0, 6) || null })
+                                  }
+                                />
+                              </div>
+                              <label className="text-xs text-ink-400 block mb-1.5">Какие защищённые PIN-ом разделы открывает этот сотрудник</label>
+                              <div className="grid sm:grid-cols-3 gap-2">
+                                {PROTECTABLE_ROUTES.map((route) => (
+                                  <label
+                                    key={route.path}
+                                    className="flex items-center gap-2 rounded-lg border border-ink-800 px-2.5 py-1.5 cursor-pointer hover:bg-ink-900"
+                                  >
+                                    <Checkbox
+                                      checked={(e.allowedRoutes ?? []).includes(route.path)}
+                                      onChange={() => toggleEmployeeRoute(e.id, route.path)}
+                                    />
+                                    <span className="text-xs text-ink-200">{route.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

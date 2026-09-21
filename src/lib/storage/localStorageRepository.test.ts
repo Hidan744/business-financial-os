@@ -65,6 +65,7 @@ function makeLegacyBusinessState(): BusinessState {
       npdRatePct: 6,
       patentAnnualCost: 0,
     },
+    accessSettings: { protectedRoutes: [], ownerPin: null },
     onboardingComplete: true,
   }
 }

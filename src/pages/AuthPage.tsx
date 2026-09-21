@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthStore } from '@/store/authStore'
@@ -17,6 +18,7 @@ export function AuthPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [consent, setConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [signUpMessage, setSignUpMessage] = useState<string | null>(null)
 
@@ -30,6 +32,7 @@ export function AuthPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
+    if (!consent) return
     setSubmitting(true)
     setSignUpMessage(null)
     const ok = await signUp(email, password)
@@ -83,9 +86,18 @@ export function AuthPage() {
                   <Label htmlFor="signup-password">Пароль</Label>
                   <Input id="signup-password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2" />
                 </div>
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} required className="mt-0.5" />
+                  <span className="text-xs text-ink-400 leading-snug">
+                    Даю согласие на обработку персональных данных в соответствии с{' '}
+                    <Link to="/privacy" target="_blank" className="text-brand-400 hover:underline">
+                      Политикой обработки персональных данных
+                    </Link>
+                  </span>
+                </label>
                 {error && <p className="text-xs text-negative-500">{error}</p>}
                 {signUpMessage && <p className="text-xs text-positive-500">{signUpMessage}</p>}
-                <Button type="submit" className="w-full" disabled={submitting}>
+                <Button type="submit" className="w-full" disabled={submitting || !consent}>
                   {submitting ? 'Регистрируем…' : 'Зарегистрироваться'}
                 </Button>
               </form>

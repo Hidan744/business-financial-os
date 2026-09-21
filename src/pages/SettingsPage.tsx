@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom'
-import { Cloud, LogOut, Trash2 } from 'lucide-react'
+import { Cloud, KeyRound, LogOut, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { InfoTooltip } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ImportPanel } from '@/features/import/ImportPanel'
 import { useBusinessStore } from '@/store/businessStore'
 import { useAuthStore } from '@/store/authStore'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
+import { PROTECTABLE_ROUTES } from '@/types/access'
 
 const CURRENCIES = [
   { value: 'RUB', label: '₽ Российский рубль' },
@@ -24,6 +27,8 @@ export function SettingsPage() {
   const updateProfile = useBusinessStore((s) => s.updateProfile)
   const removeBusiness = useBusinessStore((s) => s.removeBusiness)
   const resetAll = useBusinessStore((s) => s.resetAll)
+  const accessSettings = useBusinessStore((s) => s.accessSettings)
+  const updateAccessSettings = useBusinessStore((s) => s.updateAccessSettings)
   const authStatus = useAuthStore((s) => s.status)
   const authUser = useAuthStore((s) => s.user)
   const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
@@ -43,6 +48,15 @@ export function SettingsPage() {
     if (!window.confirm('Удалить все данные всех бизнесов из этого браузера? Это действие необратимо.')) return
     await resetAll()
     navigate('/onboarding')
+  }
+
+  function toggleProtectedRoute(path: string) {
+    const isProtected = accessSettings.protectedRoutes.includes(path)
+    updateAccessSettings({
+      protectedRoutes: isProtected
+        ? accessSettings.protectedRoutes.filter((p) => p !== path)
+        : [...accessSettings.protectedRoutes, path],
+    })
   }
 
   return (
@@ -136,6 +150,56 @@ export function SettingsPage() {
               {profile.isSelfEmployed ? 'Включён' : 'Выключен'}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
+            <KeyRound className="size-4" /> Доступ по PIN-коду
+            <InfoTooltip>
+              Устройство и вход общие, но отдельные разделы можно закрыть PIN-ом — например, чтобы сотрудник за
+              кассой не видел Финансы или Настройки. Это ограничение «на бумаге»: PIN хранится вместе с данными
+              бизнеса без шифрования, так что не полагайтесь на него как на защиту от технически подкованного
+              человека — это про порядок в команде, не про безопасность уровня банка.
+            </InfoTooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2 space-y-5">
+          <div className="max-w-xs">
+            <Label htmlFor="owner-pin">Ваш PIN (открывает все защищённые разделы)</Label>
+            <Input
+              id="owner-pin"
+              inputMode="numeric"
+              placeholder="Например, 1234"
+              value={accessSettings.ownerPin ?? ''}
+              onChange={(e) => updateAccessSettings({ ownerPin: e.target.value.replace(/\D/g, '').slice(0, 6) || null })}
+              className="mt-2"
+            />
+          </div>
+
+          <div>
+            <Label>Какие разделы закрыть PIN-ом</Label>
+            <div className="mt-2 grid sm:grid-cols-2 gap-2">
+              {PROTECTABLE_ROUTES.map((route) => (
+                <label
+                  key={route.path}
+                  className="flex items-center gap-2.5 rounded-lg border border-ink-800 px-3 py-2 cursor-pointer hover:bg-ink-900"
+                >
+                  <Checkbox
+                    checked={accessSettings.protectedRoutes.includes(route.path)}
+                    onChange={() => toggleProtectedRoute(route.path)}
+                  />
+                  <span className="text-sm text-ink-200">{route.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs text-ink-500">
+            Доступ конкретным сотрудникам к этим разделам выдаётся на странице «Сотрудники» — там же задаётся
+            персональный PIN каждого.
+          </p>
         </CardContent>
       </Card>
 

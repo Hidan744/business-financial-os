@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
+import { RouteGate } from '@/components/access/RouteGate'
 import { useBusinessStore } from '@/store/businessStore'
 
 export function AppShell() {
@@ -24,7 +25,9 @@ export function AppShell() {
       <div className="flex-1 min-w-0">
         <MobileNav />
         <main className="max-w-[1400px] mx-auto px-4 py-6 lg:px-8 lg:py-8 print:max-w-none print:p-0">
-          <Outlet />
+          <RouteGate>
+            <Outlet />
+          </RouteGate>
         </main>
       </div>
     </div>

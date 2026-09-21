@@ -101,6 +101,7 @@ function makeBusiness(id: string, name: string): BusinessState {
       npdRatePct: 6,
       patentAnnualCost: 0,
     },
+    accessSettings: { protectedRoutes: [], ownerPin: null },
   }
 }
 

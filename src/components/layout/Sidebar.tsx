@@ -19,10 +19,14 @@ import {
   FileText,
   Settings,
   Home,
+  Lock,
+  LockOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
+import { useBusinessStore } from '@/store/businessStore'
+import { useAccessGateStore } from '@/store/accessGateStore'
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -46,6 +50,11 @@ const NAV_ITEMS = [
 ]
 
 export function Sidebar() {
+  const protectedRoutes = useBusinessStore((s) => s.accessSettings.protectedRoutes)
+  const unlockedBy = useAccessGateStore((s) => s.unlockedBy)
+  const unlockedRoutes = useAccessGateStore((s) => s.unlockedRoutes)
+  const lock = useAccessGateStore((s) => s.lock)
+
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
       <Link to="/" className="flex items-center gap-2 px-5 h-16 border-b border-ink-800 hover:bg-ink-900 transition-colors">
@@ -60,26 +69,39 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-3 space-y-1">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-brand-500/15 text-brand-400'
-                  : 'text-ink-400 hover:text-ink-100 hover:bg-ink-900',
-              )
-            }
-          >
-            <Icon className="size-4 shrink-0" />
-            {label}
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
+          const isLocked = protectedRoutes.includes(to) && !unlockedRoutes.includes(to)
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-brand-500/15 text-brand-400'
+                    : 'text-ink-400 hover:text-ink-100 hover:bg-ink-900',
+                )
+              }
+            >
+              <Icon className="size-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+              {isLocked && <Lock className="size-3 shrink-0 text-ink-600" />}
+            </NavLink>
+          )
+        })}
       </nav>
 
-      <div className="px-3 py-3 border-t border-ink-800">
+      <div className="px-3 py-3 border-t border-ink-800 space-y-1">
+        {unlockedBy && (
+          <button
+            onClick={() => lock()}
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-warning-500 hover:bg-ink-900 transition-colors"
+          >
+            <LockOpen className="size-4 shrink-0" />
+            Заблокировать доступ
+          </button>
+        )}
         <Link
           to="/"
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-400 hover:text-ink-100 hover:bg-ink-900 transition-colors"

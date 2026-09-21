@@ -119,7 +119,15 @@ export function createUrbanCoffeeDemo(): BusinessState {
       nonCurrentLiabilities: { longTermDebt: 500000, other: 0 },
     },
     employees: [
-      { id: 'emp1', name: 'Анна Смирнова', role: 'Управляющий', salary: 90000, hireDate: '2024-01-15' },
+      {
+        id: 'emp1',
+        name: 'Анна Смирнова',
+        role: 'Управляющий',
+        salary: 90000,
+        hireDate: '2024-01-15',
+        pin: '1111',
+        allowedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report'],
+      },
       { id: 'emp2', name: 'Мария Иванова', role: 'Бариста', salary: 70000, hireDate: '2024-02-01' },
       { id: 'emp3', name: 'Дмитрий Кузнецов', role: 'Бариста', salary: 70000, hireDate: '2024-03-10' },
       { id: 'emp4', name: 'Елена Попова', role: 'Бариста', salary: 70000, hireDate: '2024-05-20' },
@@ -152,6 +160,10 @@ export function createUrbanCoffeeDemo(): BusinessState {
       osnProfitTaxRatePct: 20,
       npdRatePct: 6,
       patentAnnualCost: 0,
+    },
+    accessSettings: {
+      protectedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report'],
+      ownerPin: '1234',
     },
   }
 }

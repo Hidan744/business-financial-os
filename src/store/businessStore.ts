@@ -8,6 +8,8 @@ import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 import { DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS } from '@/types/unitEconomics'
 import type { TaxSettings } from '@/types/tax'
 import { DEFAULT_TAX_SETTINGS } from '@/types/tax'
+import type { AccessSettings } from '@/types/access'
+import { DEFAULT_ACCESS_SETTINGS } from '@/types/access'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
@@ -37,6 +39,7 @@ interface Store {
   goals: Goal[]
   unitEconomics: UnitEconomicsAssumptions
   taxSettings: TaxSettings
+  accessSettings: AccessSettings
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -70,6 +73,7 @@ interface Store {
   removeGoal: (id: string) => Promise<void>
   updateUnitEconomics: (patch: Partial<UnitEconomicsAssumptions>) => Promise<void>
   updateTaxSettings: (patch: Partial<TaxSettings>) => Promise<void>
+  updateAccessSettings: (patch: Partial<AccessSettings>) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -111,6 +115,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     goals: active?.goals ?? [],
     unitEconomics: active?.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: active?.taxSettings ?? DEFAULT_TAX_SETTINGS,
+    accessSettings: active?.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
   }
 }
 
@@ -145,6 +150,7 @@ async function mutateActiveBusiness(
     goals: current.goals ?? [],
     unitEconomics: current.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: current.taxSettings ?? DEFAULT_TAX_SETTINGS,
+    accessSettings: current.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
   }
   const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
@@ -170,6 +176,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   goals: [],
   unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   taxSettings: DEFAULT_TAX_SETTINGS,
+  accessSettings: DEFAULT_ACCESS_SETTINGS,
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -228,6 +235,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       goals: [],
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
+      accessSettings: DEFAULT_ACCESS_SETTINGS,
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -400,6 +408,10 @@ export const useBusinessStore = create<Store>((set, get) => ({
     await mutateActiveBusiness(get, set, (b) => ({ ...b, taxSettings: { ...b.taxSettings, ...patch } }))
   },
 
+  updateAccessSettings: async (patch) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, accessSettings: { ...b.accessSettings, ...patch } }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -421,6 +433,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       goals: [],
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
+      accessSettings: DEFAULT_ACCESS_SETTINGS,
     })
   },
 }))

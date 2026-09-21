@@ -6,6 +6,7 @@ import type { Employee, PlannedHire } from '@/types/hr'
 import type { Goal } from '@/types/goal'
 import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 import type { TaxSettings } from '@/types/tax'
+import type { AccessSettings } from '@/types/access'
 
 export interface BusinessState {
   profile: BusinessProfile
@@ -31,6 +32,8 @@ export interface BusinessState {
   unitEconomics: UnitEconomicsAssumptions
   /** Настройки налогового режима для калькулятора налогов. */
   taxSettings: TaxSettings
+  /** Ограничение доступа к разделам по PIN-коду (владелец + сотрудники). */
+  accessSettings: AccessSettings
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */
