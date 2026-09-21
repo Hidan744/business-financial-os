@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { BrandMark } from '@/components/icons/BrandMark'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useBusinessStore } from '@/store/businessStore'
@@ -156,7 +157,7 @@ export function OnboardingPage() {
     <div className="min-h-screen bg-ink-950 flex flex-col">
       <header className="flex items-center justify-between px-4 lg:px-8 h-16 border-b border-ink-800">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-brand-400" />
+          <BrandMark className="size-4 text-brand-400" />
           <span className="text-sm font-semibold text-ink-50">Business Financial OS</span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSkipToDemo}>

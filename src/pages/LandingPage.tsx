@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { BrandMark } from '@/components/icons/BrandMark'
 import { useBusinessStore } from '@/store/businessStore'
 import { useNavigate } from 'react-router-dom'
 
@@ -63,7 +64,7 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 lg:px-8 h-16">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
-              <Sparkles className="size-4" />
+              <BrandMark className="size-4" />
             </div>
             <span className="text-sm font-semibold">Business Financial OS</span>
           </div>

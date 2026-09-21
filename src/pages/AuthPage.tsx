@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { BrandMark } from '@/components/icons/BrandMark'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuthStore } from '@/store/authStore'
 
@@ -40,7 +40,7 @@ export function AuthPage() {
   return (
     <div className="min-h-screen bg-ink-950 flex flex-col items-center justify-center px-4">
       <div className="flex items-center gap-2 mb-8">
-        <Sparkles className="size-5 text-brand-400" />
+        <BrandMark className="size-5 text-brand-400" />
         <span className="text-sm font-semibold text-ink-50">Business Financial OS</span>
       </div>
 

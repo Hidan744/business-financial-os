@@ -18,9 +18,9 @@ import {
   Percent,
   FileText,
   Settings,
-  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
 
 const NAV_ITEMS = [
@@ -49,7 +49,7 @@ export function Sidebar() {
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
       <div className="flex items-center gap-2 px-5 h-16 border-b border-ink-800">
         <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400 shrink-0">
-          <Sparkles className="size-4" />
+          <BrandMark className="size-4" />
         </div>
         <div className="text-sm font-semibold text-ink-50 truncate">Business Financial OS</div>
       </div>

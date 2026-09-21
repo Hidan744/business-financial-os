@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Menu, X, Sparkles } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
 
 const NAV_ITEMS = [
@@ -32,7 +33,7 @@ export function MobileNav() {
     <div className="lg:hidden print:hidden">
       <div className="flex items-center justify-between h-14 px-4 border-b border-ink-800 bg-ink-950">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-brand-400" />
+          <BrandMark className="size-4 text-brand-400" />
           <span className="text-sm font-semibold">Business Financial OS</span>
         </div>
         <button onClick={() => setOpen(true)} aria-label="Открыть меню" className="text-ink-300">
