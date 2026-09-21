@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { to: '/app/debts', label: 'Долги' },
   { to: '/app/hr', label: 'Сотрудники' },
   { to: '/app/goals', label: 'Цели' },
+  { to: '/app/unit-economics', label: 'Unit-экономика' },
   { to: '/app/report', label: 'Отчёт' },
   { to: '/app/settings', label: 'Настройки' },
 ]

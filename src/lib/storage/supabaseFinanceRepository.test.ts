@@ -92,6 +92,7 @@ function makeBusiness(id: string, name: string): BusinessState {
     employees: [],
     plannedHires: [],
     goals: [],
+    unitEconomics: { purchaseFrequencyPerMonth: 1, monthlyChurnRatePct: 10, manualCac: null },
   }
 }
 

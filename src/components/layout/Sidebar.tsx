@@ -14,6 +14,7 @@ import {
   Scale,
   Users,
   Flag,
+  Calculator,
   FileText,
   Settings,
   Sparkles,
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { to: '/app/debts', label: 'Долги', icon: Landmark },
   { to: '/app/hr', label: 'Сотрудники', icon: Users },
   { to: '/app/goals', label: 'Цели', icon: Flag },
+  { to: '/app/unit-economics', label: 'Unit-экономика', icon: Calculator },
   { to: '/app/report', label: 'Отчёт', icon: FileText },
   { to: '/app/settings', label: 'Настройки', icon: Settings },
 ]

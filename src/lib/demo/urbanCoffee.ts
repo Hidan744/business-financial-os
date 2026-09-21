@@ -140,5 +140,10 @@ export function createUrbanCoffeeDemo(): BusinessState {
         baselineValue: 2400000,
       },
     ],
+    unitEconomics: {
+      purchaseFrequencyPerMonth: 3,
+      monthlyChurnRatePct: 15,
+      manualCac: null,
+    },
   }
 }

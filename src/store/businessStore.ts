@@ -4,6 +4,8 @@ import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialIn
 import type { AiCfoMessage } from '@/types/ai'
 import type { Employee, PlannedHire } from '@/types/hr'
 import type { Goal } from '@/types/goal'
+import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
+import { DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS } from '@/types/unitEconomics'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
@@ -31,6 +33,7 @@ interface Store {
   employees: Employee[]
   plannedHires: PlannedHire[]
   goals: Goal[]
+  unitEconomics: UnitEconomicsAssumptions
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -62,6 +65,7 @@ interface Store {
   syncPayrollFromEmployees: () => Promise<void>
   addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>
   removeGoal: (id: string) => Promise<void>
+  updateUnitEconomics: (patch: Partial<UnitEconomicsAssumptions>) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -101,6 +105,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     employees: active?.employees ?? [],
     plannedHires: active?.plannedHires ?? [],
     goals: active?.goals ?? [],
+    unitEconomics: active?.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   }
 }
 
@@ -133,6 +138,7 @@ async function mutateActiveBusiness(
     employees: current.employees ?? [],
     plannedHires: current.plannedHires ?? [],
     goals: current.goals ?? [],
+    unitEconomics: current.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   }
   const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
@@ -156,6 +162,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   employees: [],
   plannedHires: [],
   goals: [],
+  unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -212,6 +219,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       employees: [],
       plannedHires: [],
       goals: [],
+      unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -376,6 +384,10 @@ export const useBusinessStore = create<Store>((set, get) => ({
     await mutateActiveBusiness(get, set, (b) => ({ ...b, goals: b.goals.filter((g) => g.id !== id) }))
   },
 
+  updateUnitEconomics: async (patch) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, unitEconomics: { ...b.unitEconomics, ...patch } }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -395,6 +407,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       employees: [],
       plannedHires: [],
       goals: [],
+      unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     })
   },
 }))

@@ -4,6 +4,7 @@ import type { ForecastConfig, Scenario } from '@/types/scenario'
 import type { AiCfoMessage } from '@/types/ai'
 import type { Employee, PlannedHire } from '@/types/hr'
 import type { Goal } from '@/types/goal'
+import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 
 export interface BusinessState {
   profile: BusinessProfile
@@ -25,6 +26,8 @@ export interface BusinessState {
   plannedHires: PlannedHire[]
   /** Финансовые цели с трекингом прогресса. */
   goals: Goal[]
+  /** Предположения для расчёта LTV/CAC (Unit Economics). */
+  unitEconomics: UnitEconomicsAssumptions
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */
