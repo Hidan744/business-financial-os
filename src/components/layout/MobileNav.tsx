@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
+import { Link, NavLink } from 'react-router-dom'
+import { Home, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
@@ -32,10 +32,10 @@ export function MobileNav() {
   return (
     <div className="lg:hidden print:hidden">
       <div className="flex items-center justify-between h-14 px-4 border-b border-ink-800 bg-ink-950">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <BrandMark className="size-4 text-brand-400" />
           <span className="text-sm font-semibold">Business Financial OS</span>
-        </div>
+        </Link>
         <button onClick={() => setOpen(true)} aria-label="Открыть меню" className="text-ink-300">
           <Menu className="size-5" />
         </button>
@@ -69,6 +69,16 @@ export function MobileNav() {
               </NavLink>
             ))}
           </nav>
+          <div className="px-3 pt-3 pb-3 border-t border-ink-800">
+            <Link
+              to="/"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-ink-300"
+            >
+              <Home className="size-4 shrink-0" />
+              На главную
+            </Link>
+          </div>
         </div>
       )}
     </div>
