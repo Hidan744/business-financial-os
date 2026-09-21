@@ -9,6 +9,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 
 const AuthPage = lazy(() => import('@/pages/AuthPage').then((m) => ({ default: m.AuthPage })))
 const FinancePage = lazy(() => import('@/pages/FinancePage').then((m) => ({ default: m.FinancePage })))
+const BalancePage = lazy(() => import('@/pages/BalancePage').then((m) => ({ default: m.BalancePage })))
 const CashflowPage = lazy(() => import('@/pages/CashflowPage').then((m) => ({ default: m.CashflowPage })))
 const HistoryPage = lazy(() => import('@/pages/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
@@ -43,6 +44,7 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="balance" element={<BalancePage />} />
             <Route path="cashflow" element={<CashflowPage />} />
             <Route path="history" element={<HistoryPage />} />
             <Route path="simulator" element={<SimulatorPage />} />

@@ -7,6 +7,7 @@ import { BusinessSwitcher } from './BusinessSwitcher'
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard' },
   { to: '/app/finance', label: 'Финансы' },
+  { to: '/app/balance', label: 'Баланс' },
   { to: '/app/cashflow', label: 'Cash Flow' },
   { to: '/app/history', label: 'История' },
   { to: '/app/simulator', label: 'Симулятор' },

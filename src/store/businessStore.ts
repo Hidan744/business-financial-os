@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import type { BusinessProfile } from '@/types/business'
-import type { CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
+import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
 import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
 import { createUrbanCoffeeDemo } from '@/lib/demo/urbanCoffee'
+import { emptyBalanceSheet } from '@/lib/finance/balanceSheet'
 import { generateId } from '@/lib/id'
 
 interface Store {
@@ -24,6 +25,7 @@ interface Store {
   aiHistory: AiCfoMessage[]
   history: FinancialInputs[]
   targets: PeriodTarget[]
+  balanceSheet: BalanceSheetInputs | null
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -45,6 +47,7 @@ interface Store {
   removeHistoricalRecord: (period: string) => Promise<void>
   setTarget: (target: PeriodTarget) => Promise<void>
   removeTarget: (period: string) => Promise<void>
+  updateBalanceSheet: (patch: Partial<BalanceSheetInputs>) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -76,9 +79,11 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     scenarios: active?.scenarios ?? STANDARD_SCENARIOS,
     forecastConfig: active?.forecastConfig ?? DEFAULT_FORECAST_CONFIG,
     aiHistory: active?.aiHistory ?? [],
-    // ?? [] — защита от записей, сохранённых до появления истории/целей (старая форма BusinessState).
+    // ?? [] / ?? emptyBalanceSheet(...) — защита от записей, сохранённых до появления
+    // истории/целей/баланса (старая форма BusinessState).
     history: active?.history ?? [],
     targets: active?.targets ?? [],
+    balanceSheet: active ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs.period)) : null,
   }
 }
 
@@ -103,7 +108,12 @@ async function mutateActiveBusiness(
   const { businesses, activeBusinessId } = get()
   if (!activeBusinessId || !businesses[activeBusinessId]) return
   const current = businesses[activeBusinessId]
-  const normalized: BusinessState = { ...current, history: current.history ?? [], targets: current.targets ?? [] }
+  const normalized: BusinessState = {
+    ...current,
+    history: current.history ?? [],
+    targets: current.targets ?? [],
+    balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs.period),
+  }
   const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
   await persist(get)
@@ -122,6 +132,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   aiHistory: [],
   history: [],
   targets: [],
+  balanceSheet: null,
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -174,6 +185,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       onboardingComplete: true,
       history: [],
       targets: [],
+      balanceSheet: emptyBalanceSheet(profile.id, financialInputs.period),
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -293,6 +305,10 @@ export const useBusinessStore = create<Store>((set, get) => ({
     }))
   },
 
+  updateBalanceSheet: async (patch) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, balanceSheet: { ...b.balanceSheet, ...patch } }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -308,6 +324,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       aiHistory: [],
       history: [],
       targets: [],
+      balanceSheet: null,
     })
   },
 }))

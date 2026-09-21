@@ -1,5 +1,5 @@
 import type { BusinessProfile } from '@/types/business'
-import type { CashFlowInputs, FinancialInputs, PeriodTarget } from '@/types/finance'
+import type { BalanceSheetInputs, CashFlowInputs, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import type { AiCfoMessage } from '@/types/ai'
 
@@ -15,6 +15,8 @@ export interface BusinessState {
   history: FinancialInputs[]
   /** Целевые показатели по периодам для сравнения план/факт. */
   targets: PeriodTarget[]
+  /** Баланс на конец текущего периода. */
+  balanceSheet: BalanceSheetInputs
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */

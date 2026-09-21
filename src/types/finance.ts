@@ -59,6 +59,34 @@ export interface PeriodTarget {
   targetSalesCount: number
 }
 
+/**
+ * Баланс на конец периода. Капитал (equity) не вводится напрямую — это остаточная величина
+ * (Активы − Обязательства), как в бухгалтерском балансе, чтобы баланс не мог "не сойтись".
+ */
+export interface BalanceSheetInputs {
+  businessId: string
+  period: string
+  currentAssets: {
+    cash: number
+    receivables: number // дебиторская задолженность
+    inventory: number // запасы, товары
+    other: number
+  }
+  nonCurrentAssets: {
+    fixedAssets: number // основные средства (оборудование, помещение и т.п.)
+    other: number
+  }
+  currentLiabilities: {
+    payables: number // кредиторская задолженность
+    shortTermDebt: number
+    other: number
+  }
+  nonCurrentLiabilities: {
+    longTermDebt: number
+    other: number
+  }
+}
+
 export interface FinancialSnapshot {
   revenue: number
   cogs: number

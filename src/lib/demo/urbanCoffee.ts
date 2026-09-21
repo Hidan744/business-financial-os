@@ -110,5 +110,13 @@ export function createUrbanCoffeeDemo(): BusinessState {
     targets: [
       { period: CURRENT_PERIOD, targetRevenue: 2500000, targetNetProfit: 550000, targetSalesCount: 2900 },
     ],
+    balanceSheet: {
+      businessId,
+      period: CURRENT_PERIOD,
+      currentAssets: { cash: 645000, receivables: 120000, inventory: 180000, other: 0 },
+      nonCurrentAssets: { fixedAssets: 1400000, other: 0 },
+      currentLiabilities: { payables: 210000, shortTermDebt: 0, other: 0 },
+      nonCurrentLiabilities: { longTermDebt: 500000, other: 0 },
+    },
   }
 }

@@ -81,6 +81,14 @@ function makeBusiness(id: string, name: string): BusinessState {
     onboardingComplete: true,
     history: [],
     targets: [],
+    balanceSheet: {
+      businessId: id,
+      period: '2026-09',
+      currentAssets: { cash: 0, receivables: 0, inventory: 0, other: 0 },
+      nonCurrentAssets: { fixedAssets: 0, other: 0 },
+      currentLiabilities: { payables: 0, shortTermDebt: 0, other: 0 },
+      nonCurrentLiabilities: { longTermDebt: 0, other: 0 },
+    },
   }
 }
 
