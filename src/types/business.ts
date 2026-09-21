@@ -17,6 +17,8 @@ export interface BusinessProfile {
   period: AnalysisPeriod
   employeesCount: number
   createdAt: string
+  /** Упрощённый режим для самозанятых — акцент на "доход − расходы − налог", без ФОТ/сотрудников. */
+  isSelfEmployed?: boolean
 }
 
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {

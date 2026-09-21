@@ -122,6 +122,20 @@ export function SettingsPage() {
               className="mt-2 w-32"
             />
           </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-ink-800 px-4 py-3">
+            <div>
+              <div className="text-sm text-ink-100">Режим самозанятого</div>
+              <div className="text-xs text-ink-500 mt-0.5">Упрощённый Dashboard: доход − расходы − налог, без акцента на ФОТ и сотрудников.</div>
+            </div>
+            <Button
+              size="sm"
+              variant={profile.isSelfEmployed ? 'secondary' : 'ghost'}
+              onClick={() => updateProfile({ isSelfEmployed: !profile.isSelfEmployed })}
+            >
+              {profile.isSelfEmployed ? 'Включён' : 'Выключен'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

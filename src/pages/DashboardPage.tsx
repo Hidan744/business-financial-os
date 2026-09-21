@@ -14,6 +14,7 @@ import {
   calculateRevenuePerEmployee,
 } from '@/lib/finance/formulas'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
+import { BUSINESS_TYPE_KPI_PRIORITIES } from '@/lib/businessTypeKpis'
 
 export function DashboardPage() {
   const { inputs, snapshot } = useFinancials()
@@ -36,6 +37,12 @@ export function DashboardPage() {
   const revenueYoyPct = yoySnapshot ? calculatePeriodGrowthPct(snapshot.revenue, yoySnapshot.revenue) : null
   const profitYoyPct = yoySnapshot ? calculatePeriodGrowthPct(snapshot.netProfit, yoySnapshot.netProfit) : null
 
+  const priorityKeys = BUSINESS_TYPE_KPI_PRIORITIES[profile.type] ?? []
+  const isKey = (key: string) => priorityKeys.includes(key)
+
+  const isSelfEmployed = profile.isSelfEmployed ?? false
+  const selfEmployedExpenses = snapshot.revenue - snapshot.netProfit - inputs.taxes
+
   return (
     <div className="space-y-6">
       <div>
@@ -43,40 +50,72 @@ export function DashboardPage() {
         <p className="text-sm text-ink-500 mt-1">{profile?.name} · итоги за период {inputs.period}</p>
       </div>
 
+      {isSelfEmployed && (
+        <Card className="p-5">
+          <div className="text-xs font-medium text-ink-400 mb-3">Доход − Расходы − Налог = Чистый доход</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-center">
+            <SelfEmployedMetric label="Доход" value={snapshot.revenue} />
+            <SelfEmployedMetric label="Расходы" value={selfEmployedExpenses} sign="-" />
+            <SelfEmployedMetric label="Налог" value={inputs.taxes} sign="-" />
+            <SelfEmployedMetric label="Чистый доход" value={snapshot.netProfit} sign="=" bold />
+          </div>
+        </Card>
+      )}
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Выручка"
           value={formatCurrency(snapshot.revenue)}
           tooltip="Все деньги, полученные от продаж товаров или услуг за период."
+          highlighted={isKey('revenue')}
         />
         <KpiCard
           label="Чистая прибыль"
           value={formatCurrency(snapshot.netProfit)}
           tooltip="То, что остаётся после вычета всех расходов, налогов, процентов и амортизации."
           accent={snapshot.netProfit >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('netProfit')}
         />
         <KpiCard
           label="EBITDA"
           value={formatCurrency(snapshot.ebitda)}
           tooltip="Прибыль до вычета процентов, налогов и амортизации — показывает эффективность операционной деятельности."
           accent={snapshot.ebitda >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('ebitda')}
         />
         <KpiCard
           label="Маржинальность"
           value={formatPercent(snapshot.netMarginPct)}
           tooltip="Доля чистой прибыли в выручке. Показывает, сколько компания зарабатывает с каждого рубля продаж."
           accent={snapshot.netMarginPct >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('netMarginPct')}
+        />
+        <KpiCard
+          label="Валовая маржа"
+          value={formatPercent(snapshot.grossMarginPct)}
+          tooltip="(Выручка − Себестоимость) / Выручка. Сколько остаётся после прямых затрат на товар/услугу."
+          accent={snapshot.grossMarginPct >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('grossMarginPct')}
+        />
+        <KpiCard
+          label="EBITDA маржа"
+          value={formatPercent(snapshot.ebitdaMarginPct)}
+          tooltip="EBITDA / Выручка. Операционная эффективность без учёта амортизации, процентов и налогов."
+          accent={snapshot.ebitdaMarginPct >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('ebitdaMarginPct')}
         />
         <KpiCard
           label="Точка безубыточности"
           value={formatCurrency(snapshot.breakEvenRevenue)}
           tooltip="Минимальная выручка, при которой бизнес не уходит в убыток: постоянные расходы ÷ маржинальность."
+          highlighted={isKey('breakEvenRevenue')}
         />
         <KpiCard
           label="Запас финансовой прочности"
           value={formatPercent(snapshot.safetyMarginPct)}
           tooltip="На сколько текущая выручка выше точки безубыточности. Чем выше — тем безопаснее бизнес."
           accent={snapshot.safetyMarginPct >= 20 ? 'positive' : snapshot.safetyMarginPct >= 0 ? 'neutral' : 'negative'}
+          highlighted={isKey('safetyMarginPct')}
         />
         <KpiCard
           label="Cash Flow"
@@ -84,13 +123,24 @@ export function DashboardPage() {
           tooltip="Разница между поступлениями и расходами денег за период."
           accent={snapshot.cashFlow >= 0 ? 'positive' : 'negative'}
           icon={<Wallet className="size-4 text-ink-500" />}
+          highlighted={isKey('cashFlow')}
         />
         <KpiCard
           label="ROMI"
           value={formatPercent(snapshot.romiPct)}
           tooltip="Приблизительный возврат инвестиций в маркетинг: (выручка − расходы на рекламу) / расходы на рекламу. Оценка по всей выручке, так как продажи по рекламным каналам отдельно не учитываются."
           accent={snapshot.romiPct >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('romiPct')}
         />
+        {snapshot.debtToEbitda !== null && (
+          <KpiCard
+            label="Долг / EBITDA"
+            value={`${snapshot.debtToEbitda.toFixed(2)}×`}
+            tooltip="Годовые платежи по кредитам к годовой EBITDA. Меньше 3× обычно считается безопасным уровнем."
+            accent={snapshot.debtToEbitda <= 3 ? 'positive' : 'negative'}
+            highlighted={isKey('debtToEbitda')}
+          />
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -126,15 +176,19 @@ export function DashboardPage() {
             accent={profitYoyPct >= 0 ? 'positive' : 'negative'}
           />
         )}
-        <KpiCard
-          label="Выручка на сотрудника"
-          value={revenuePerEmployee !== null ? formatCurrency(revenuePerEmployee) : '—'}
-          tooltip="Выручка ÷ количество сотрудников. Индикатор эффективности штата — задайте число сотрудников в Настройках."
-        />
+        {!isSelfEmployed && (
+          <KpiCard
+            label="Выручка на сотрудника"
+            value={revenuePerEmployee !== null ? formatCurrency(revenuePerEmployee) : '—'}
+            tooltip="Выручка ÷ количество сотрудников. Индикатор эффективности штата — задайте число сотрудников в Настройках."
+            highlighted={isKey('revenuePerEmployee')}
+          />
+        )}
         <KpiCard
           label="Стоимость продажи (оценка)"
           value={costPerSale !== null ? formatCurrency(costPerSale) : '—'}
           tooltip="Приблизительно: расходы на рекламу ÷ количество продаж. Не настоящий CAC — система не различает, какие продажи пришли именно из рекламы."
+          highlighted={isKey('costPerSale')}
         />
       </div>
 
@@ -168,4 +222,16 @@ export function DashboardPage() {
 function getPeriodOneYearAgo(period: string): string {
   const [year, month] = period.split('-')
   return `${Number(year) - 1}-${month}`
+}
+
+function SelfEmployedMetric({ label, value, sign, bold }: { label: string; value: number; sign?: '-' | '='; bold?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      {sign && <span className="text-ink-500 text-sm">{sign}</span>}
+      <div>
+        <div className="text-xs text-ink-500">{label}</div>
+        <div className={`tabular-nums ${bold ? 'text-lg font-semibold text-ink-50' : 'text-sm text-ink-200'}`}>{formatCurrency(value)}</div>
+      </div>
+    </div>
+  )
 }
