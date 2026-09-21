@@ -13,6 +13,7 @@ export function AuthPage() {
   const navigate = useNavigate()
   const signIn = useAuthStore((s) => s.signIn)
   const signUp = useAuthStore((s) => s.signUp)
+  const requestPasswordReset = useAuthStore((s) => s.requestPasswordReset)
   const error = useAuthStore((s) => s.error)
   const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
 
@@ -21,6 +22,8 @@ export function AuthPage() {
   const [consent, setConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [signUpMessage, setSignUpMessage] = useState<string | null>(null)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -28,6 +31,15 @@ export function AuthPage() {
     const ok = await signIn(email, password)
     setSubmitting(false)
     if (ok) navigate('/app/dashboard')
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    setResetMessage(null)
+    const ok = await requestPasswordReset(email)
+    setSubmitting(false)
+    if (ok) setResetMessage('Проверьте почту — мы отправили ссылку для сброса пароля.')
   }
 
   async function handleSignUp(e: React.FormEvent) {
@@ -60,20 +72,59 @@ export function AuthPage() {
             </TabsList>
 
             <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div>
-                  <Label htmlFor="signin-email">Email</Label>
-                  <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
-                </div>
-                <div>
-                  <Label htmlFor="signin-password">Пароль</Label>
-                  <Input id="signin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2" />
-                </div>
-                {error && <p className="text-xs text-negative-500">{error}</p>}
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? 'Входим…' : 'Войти'}
-                </Button>
-              </form>
+              {forgotMode ? (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div>
+                    <p className="text-xs text-ink-400">Укажите email — пришлём ссылку для сброса пароля.</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="forgot-email">Email</Label>
+                    <Input id="forgot-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
+                  </div>
+                  {error && <p className="text-xs text-negative-500">{error}</p>}
+                  {resetMessage && <p className="text-xs text-positive-500">{resetMessage}</p>}
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? 'Отправляем…' : 'Отправить ссылку'}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotMode(false)
+                      setResetMessage(null)
+                    }}
+                    className="text-xs text-ink-400 hover:text-ink-100 w-full text-center"
+                  >
+                    Назад к входу
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <Label htmlFor="signin-email">Email</Label>
+                    <Input id="signin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-2" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="signin-password">Пароль</Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotMode(true)
+                          setResetMessage(null)
+                        }}
+                        className="text-xs text-brand-400 hover:underline"
+                      >
+                        Забыли пароль?
+                      </button>
+                    </div>
+                    <Input id="signin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="mt-2" />
+                  </div>
+                  {error && <p className="text-xs text-negative-500">{error}</p>}
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? 'Входим…' : 'Войти'}
+                  </Button>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">

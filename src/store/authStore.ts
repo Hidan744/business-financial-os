@@ -16,6 +16,10 @@ interface AuthStore {
   signIn: (email: string, password: string) => Promise<boolean>
   signUp: (email: string, password: string) => Promise<boolean>
   signOut: () => Promise<void>
+  /** Отправляет письмо со ссылкой для сброса пароля. */
+  requestPasswordReset: (email: string) => Promise<boolean>
+  /** Меняет пароль — работает только когда есть активная recovery-сессия (после перехода по ссылке из письма). */
+  updatePassword: (newPassword: string) => Promise<boolean>
 }
 
 /** Если локально уже есть бизнесы, а в облаке пусто — переносим их один раз при первом входе. */
@@ -90,9 +94,17 @@ export const useAuthStore = create<AuthStore>((set) => ({
     // Явно указываем адрес приложения для ссылки в письме — иначе Supabase подставляет
     // Site URL из настроек проекта, который по умолчанию указывает на http://localhost:3000.
     const emailRedirectTo = window.location.origin + import.meta.env.BASE_URL
-    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } })
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } })
     if (error) {
       set({ error: error.message })
+      return false
+    }
+    // Supabase не возвращает отдельную ошибку на повторную регистрацию уже существующего
+    // email (защита от email enumeration — иначе по ответу можно было бы угадывать, кто
+    // зарегистрирован). Вместо этого он молча "успешно" отвечает, но не создаёт вторую
+    // identity: пустой identities — верный признак, что аккаунт с этим email уже есть.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      set({ error: 'Этот email уже зарегистрирован. Попробуйте войти или восстановить пароль.' })
       return false
     }
     return true
@@ -101,5 +113,31 @@ export const useAuthStore = create<AuthStore>((set) => ({
   signOut: async () => {
     if (!supabase) return
     await supabase.auth.signOut()
+  },
+
+  requestPasswordReset: async (email) => {
+    if (!supabase) return false
+    set({ error: null })
+    // Без пути раздела в адресе — Supabase дописывает свои параметры (#access_token=...)
+    // прямо в хэш, а HashRouter тоже использует хэш для своих роутов; один хэш на двоих
+    // ломает и то, и другое. App.tsx сам распознаёт recovery-параметры и ведёт на /reset-password.
+    const redirectTo = window.location.origin + import.meta.env.BASE_URL
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+    if (error) {
+      set({ error: error.message })
+      return false
+    }
+    return true
+  },
+
+  updatePassword: async (newPassword) => {
+    if (!supabase) return false
+    set({ error: null })
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      set({ error: error.message })
+      return false
+    }
+    return true
   },
 }))

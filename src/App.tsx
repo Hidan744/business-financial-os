@@ -8,6 +8,7 @@ import { OnboardingPage } from '@/pages/OnboardingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 
 const AuthPage = lazy(() => import('@/pages/AuthPage').then((m) => ({ default: m.AuthPage })))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })))
 const FinancePage = lazy(() => import('@/pages/FinancePage').then((m) => ({ default: m.FinancePage })))
 const BalancePage = lazy(() => import('@/pages/BalancePage').then((m) => ({ default: m.BalancePage })))
@@ -29,6 +30,19 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ de
 
 function RouteFallback() {
   return <div className="py-24 text-center text-sm text-ink-500">Загрузка…</div>
+}
+
+/**
+ * Ссылка восстановления пароля из письма ведёт на корень сайта с параметрами Supabase
+ * прямо в хэше (#access_token=...&type=recovery) — не на путь вида #/reset-password,
+ * потому что тогда получился бы второй "#" внутри хэша и Supabase не смог бы разобрать
+ * свои же параметры. Поэтому вместо редиректа по пути просто рендерим страницу сброса
+ * пароля напрямую, не трогая location — сама ссылка/URL остаётся как есть.
+ */
+function CatchAllRoute() {
+  const isRecoveryLink = window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=')
+  if (isRecoveryLink) return <ResetPasswordPage />
+  return <Navigate to="/" replace />
 }
 
 function App() {
@@ -67,7 +81,7 @@ function App() {
             <Route path="report" element={<ReportPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<CatchAllRoute />} />
         </Routes>
       </Suspense>
     </TooltipProvider>
