@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ParamSlider } from '@/features/simulator/ParamSlider'
 import { BeforeAfterCompare } from '@/features/simulator/BeforeAfterCompare'
@@ -9,6 +10,7 @@ import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
 import { calculateScenario } from '@/lib/finance/scenario'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
+import { splitFirstMonthPayment } from '@/lib/finance/loan'
 import type { ScenarioMultipliers } from '@/types/scenario'
 import { DEFAULT_MULTIPLIERS, STANDARD_SCENARIOS } from '@/types/scenario'
 import { formatCurrency } from '@/lib/utils'
@@ -45,20 +47,45 @@ const PRESETS: { label: string; pct: Partial<PctState> }[] = [
   { label: 'Снизить себестоимость на 5%', pct: { cogs: -5 } },
   { label: 'Нанять сотрудника', pct: { payroll: 15 } },
   { label: 'Открыть новую точку', pct: { avgCheck: 0, salesCount: 60, rent: 100, payroll: 50, marketing: 30 } },
+  { label: 'Поднять зарплату на 15%', pct: { payroll: 15 } },
+  { label: 'Увеличить аренду на 20%', pct: { rent: 20 } },
 ]
+
+const DEFAULT_LOAN_AMOUNT = 1000000
+const DEFAULT_LOAN_RATE_PCT = 18
+const DEFAULT_LOAN_TERM_MONTHS = 12
 
 export function SimulatorPage() {
   const { inputs } = useFinancials()
   const profile = useBusinessStore((s) => s.profile)
   const [pct, setPct] = useState<PctState>(ZERO_PCT)
+  const [loanEnabled, setLoanEnabled] = useState(false)
+  const [loanAmount, setLoanAmount] = useState(DEFAULT_LOAN_AMOUNT)
+  const [loanRatePct, setLoanRatePct] = useState(DEFAULT_LOAN_RATE_PCT)
+  const [loanTermMonths, setLoanTermMonths] = useState(DEFAULT_LOAN_TERM_MONTHS)
+
+  const loanSplit = loanEnabled ? splitFirstMonthPayment(loanAmount, loanRatePct, loanTermMonths) : null
 
   const comparison = useMemo(() => {
     if (!inputs) return null
     const before = buildFinancialSnapshot(inputs)
     const scenarioInputs = calculateScenario(inputs, toMultipliers(pct))
-    const after = buildFinancialSnapshot(scenarioInputs)
+    const withLoan = loanSplit
+      ? {
+          ...scenarioInputs,
+          loanInterest: scenarioInputs.loanInterest + loanSplit.interest,
+          loanPayments: scenarioInputs.loanPayments + loanSplit.principalRepayment,
+        }
+      : scenarioInputs
+    const after = buildFinancialSnapshot(withLoan)
     return { before, after }
-  }, [inputs, pct])
+  }, [inputs, pct, loanSplit])
+
+  const canAfford = comparison
+    ? comparison.after.netProfit >= 0 &&
+      comparison.after.cashFlow >= 0 &&
+      (comparison.after.dscr === null || comparison.after.dscr >= 1.2)
+    : null
 
   const scenarioResults = useMemo(() => {
     if (!inputs) return []
@@ -80,6 +107,10 @@ export function SimulatorPage() {
 
   function reset() {
     setPct(ZERO_PCT)
+    setLoanEnabled(false)
+    setLoanAmount(DEFAULT_LOAN_AMOUNT)
+    setLoanRatePct(DEFAULT_LOAN_RATE_PCT)
+    setLoanTermMonths(DEFAULT_LOAN_TERM_MONTHS)
   }
 
   const compareRows = [
@@ -113,6 +144,9 @@ export function SimulatorPage() {
             {preset.label}
           </Button>
         ))}
+        <Button variant="secondary" size="sm" onClick={() => setLoanEnabled(true)}>
+          Взять кредит
+        </Button>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -140,6 +174,50 @@ export function SimulatorPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Могу ли я себе это позволить?</CardTitle>
+          <Button
+            variant={loanEnabled ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setLoanEnabled((v) => !v)}
+          >
+            {loanEnabled ? 'Убрать кредит из расчёта' : 'Смоделировать кредит'}
+          </Button>
+        </CardHeader>
+        {loanEnabled && (
+          <CardContent className="pt-2 space-y-5">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <LoanField label="Сумма кредита, ₽" value={loanAmount} onChange={setLoanAmount} />
+              <LoanField label="Ставка, % годовых" value={loanRatePct} onChange={setLoanRatePct} />
+              <LoanField label="Срок, мес" value={loanTermMonths} onChange={setLoanTermMonths} />
+            </div>
+
+            {loanSplit && (
+              <div className="grid sm:grid-cols-3 gap-3">
+                <ScenarioTile label="Ежемесячный платёж" value={formatCurrency(loanSplit.payment)} />
+                <ScenarioTile label="Из них проценты (1-й мес.)" value={formatCurrency(loanSplit.interest)} />
+                <ScenarioTile label="Из них тело кредита" value={formatCurrency(loanSplit.principalRepayment)} />
+              </div>
+            )}
+
+            {canAfford !== null && (
+              <div
+                className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                  canAfford
+                    ? 'border-positive-500/30 bg-positive-500/10 text-positive-500'
+                    : 'border-negative-500/30 bg-negative-500/10 text-negative-500'
+                }`}
+              >
+                {canAfford
+                  ? 'С учётом остальных параметров сценария — можете себе это позволить: прибыль и cash flow остаются положительными, долговая нагрузка в норме.'
+                  : 'Рискованно: при выбранных параметрах прибыль или cash flow уходят в минус, либо EBITDA не покрывает платежи по долгу с достаточным запасом.'}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       <Card>
         <CardHeader>
@@ -176,6 +254,27 @@ export function SimulatorPage() {
 
       <p className="text-xs text-ink-600">Компания: {profile?.name}</p>
     </div>
+  )
+}
+
+function LoanField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="space-y-1.5 block">
+      <span className="text-xs text-ink-400">{label}</span>
+      <Input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+      />
+    </label>
   )
 }
 
