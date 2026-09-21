@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { BusinessProfile } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
+import type { Employee, PlannedHire } from '@/types/hr'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
@@ -26,6 +27,8 @@ interface Store {
   history: FinancialInputs[]
   targets: PeriodTarget[]
   balanceSheet: BalanceSheetInputs | null
+  employees: Employee[]
+  plannedHires: PlannedHire[]
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -48,6 +51,13 @@ interface Store {
   setTarget: (target: PeriodTarget) => Promise<void>
   removeTarget: (period: string) => Promise<void>
   updateBalanceSheet: (patch: Partial<BalanceSheetInputs>) => Promise<void>
+  addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>
+  updateEmployee: (id: string, patch: Partial<Omit<Employee, 'id'>>) => Promise<void>
+  removeEmployee: (id: string) => Promise<void>
+  addPlannedHire: (hire: Omit<PlannedHire, 'id'>) => Promise<void>
+  removePlannedHire: (id: string) => Promise<void>
+  /** Записывает ФОТ, посчитанный по штату, в financialInputs.payroll. */
+  syncPayrollFromEmployees: () => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -84,6 +94,8 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     history: active?.history ?? [],
     targets: active?.targets ?? [],
     balanceSheet: active ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs.period)) : null,
+    employees: active?.employees ?? [],
+    plannedHires: active?.plannedHires ?? [],
   }
 }
 
@@ -113,6 +125,8 @@ async function mutateActiveBusiness(
     history: current.history ?? [],
     targets: current.targets ?? [],
     balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs.period),
+    employees: current.employees ?? [],
+    plannedHires: current.plannedHires ?? [],
   }
   const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
@@ -133,6 +147,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
   history: [],
   targets: [],
   balanceSheet: null,
+  employees: [],
+  plannedHires: [],
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -186,6 +202,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       history: [],
       targets: [],
       balanceSheet: emptyBalanceSheet(profile.id, financialInputs.period),
+      employees: [],
+      plannedHires: [],
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -309,6 +327,38 @@ export const useBusinessStore = create<Store>((set, get) => ({
     await mutateActiveBusiness(get, set, (b) => ({ ...b, balanceSheet: { ...b.balanceSheet, ...patch } }))
   },
 
+  addEmployee: async (employee) => {
+    const newEmployee = { ...employee, id: generateId('emp') }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, employees: [...b.employees, newEmployee] }))
+  },
+
+  updateEmployee: async (id, patch) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      employees: b.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+    }))
+  },
+
+  removeEmployee: async (id) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, employees: b.employees.filter((e) => e.id !== id) }))
+  },
+
+  addPlannedHire: async (hire) => {
+    const newHire = { ...hire, id: generateId('hire') }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, plannedHires: [...b.plannedHires, newHire] }))
+  },
+
+  removePlannedHire: async (id) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, plannedHires: b.plannedHires.filter((h) => h.id !== id) }))
+  },
+
+  syncPayrollFromEmployees: async () => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      financialInputs: { ...b.financialInputs, payroll: b.employees.reduce((sum, e) => sum + e.salary, 0) },
+    }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -325,6 +375,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       history: [],
       targets: [],
       balanceSheet: null,
+      employees: [],
+      plannedHires: [],
     })
   },
 }))

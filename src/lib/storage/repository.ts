@@ -2,6 +2,7 @@ import type { BusinessProfile } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import type { AiCfoMessage } from '@/types/ai'
+import type { Employee, PlannedHire } from '@/types/hr'
 
 export interface BusinessState {
   profile: BusinessProfile
@@ -17,6 +18,10 @@ export interface BusinessState {
   targets: PeriodTarget[]
   /** Баланс на конец текущего периода. */
   balanceSheet: BalanceSheetInputs
+  /** Штат сотрудников (для ФОТ снизу вверх). */
+  employees: Employee[]
+  /** Запланированные, ещё не нанятые сотрудники. */
+  plannedHires: PlannedHire[]
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */

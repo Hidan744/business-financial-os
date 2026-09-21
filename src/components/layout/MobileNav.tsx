@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: '/app/crisis', label: 'Антикризис' },
   { to: '/app/stress-test', label: 'Стресс-тест' },
   { to: '/app/debts', label: 'Долги' },
+  { to: '/app/hr', label: 'Сотрудники' },
   { to: '/app/report', label: 'Отчёт' },
   { to: '/app/settings', label: 'Настройки' },
 ]

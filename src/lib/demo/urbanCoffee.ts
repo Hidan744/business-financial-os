@@ -118,5 +118,16 @@ export function createUrbanCoffeeDemo(): BusinessState {
       currentLiabilities: { payables: 210000, shortTermDebt: 0, other: 0 },
       nonCurrentLiabilities: { longTermDebt: 500000, other: 0 },
     },
+    employees: [
+      { id: 'emp1', name: 'Анна Смирнова', role: 'Управляющий', salary: 90000, hireDate: '2024-01-15' },
+      { id: 'emp2', name: 'Мария Иванова', role: 'Бариста', salary: 70000, hireDate: '2024-02-01' },
+      { id: 'emp3', name: 'Дмитрий Кузнецов', role: 'Бариста', salary: 70000, hireDate: '2024-03-10' },
+      { id: 'emp4', name: 'Елена Попова', role: 'Бариста', salary: 70000, hireDate: '2024-05-20' },
+      { id: 'emp5', name: 'Сергей Волков', role: 'Бариста', salary: 70000, hireDate: '2024-08-01' },
+      { id: 'emp6', name: 'Ольга Соколова', role: 'Бариста', salary: 70000, hireDate: '2025-01-15' },
+      { id: 'emp7', name: 'Игорь Морозов', role: 'Клинер', salary: 40000, hireDate: '2024-02-01' },
+      { id: 'emp8', name: 'Наталья Лебедева', role: 'Клинер', salary: 40000, hireDate: '2024-06-01' },
+    ],
+    plannedHires: [],
   }
 }
