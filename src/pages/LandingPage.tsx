@@ -62,17 +62,20 @@ export function LandingPage() {
     <div className="min-h-screen bg-ink-950 text-ink-50">
       <header className="sticky top-0 z-40 border-b border-ink-800/60 bg-ink-950/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 lg:px-8 h-16">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400 shrink-0">
               <BrandMark className="size-4" />
             </div>
-            <span className="text-sm font-semibold">Business Financial OS</span>
+            <span className="text-sm font-semibold truncate">Business Financial OS</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/auth">Войти</Link>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Button variant="secondary" size="sm" asChild>
+              <Link to="/auth">
+                <span className="hidden sm:inline">Войти / Зарегистрироваться</span>
+                <span className="sm:hidden">Войти</span>
+              </Link>
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleDemo}>
+            <Button variant="ghost" size="sm" onClick={handleDemo} className="hidden sm:inline-flex">
               Посмотреть демо
             </Button>
             <Button size="sm" asChild>

@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase/client'
 import { setActiveRepository, localFinanceRepository } from '@/lib/storage/activeRepository'
 import { supabaseFinanceRepository } from '@/lib/storage/supabaseFinanceRepository'
 import { useBusinessStore } from './businessStore'
+import { useAccessGateStore } from './accessGateStore'
 
 interface AuthStore {
   status: 'loading' | 'guest' | 'authenticated'
@@ -64,7 +65,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
       } else if (event === 'SIGNED_OUT') {
         setActiveRepository(localFinanceRepository)
         set({ status: 'guest', user: null })
-        await useBusinessStore.getState().hydrate()
+        // Полный сброс, а не просто переключение на локальные данные: иначе после
+        // выхода могли всплыть демо/старые данные, ранее сохранённые в этом браузере.
+        await useBusinessStore.getState().resetAll()
+        useAccessGateStore.getState().lock()
       }
     })
   },
