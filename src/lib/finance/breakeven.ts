@@ -62,3 +62,8 @@ export function calculateAllowedCAC(
   const cac = contributionPerSale - profitPerSale
   return Math.max(0, cac)
 }
+
+/** Сколько можно вывести из бизнеса сейчас, не опускаясь ниже минимального резерва. */
+export function calculateWithdrawableAmount(cashBalance: number, minimumReserve: number): number {
+  return Math.max(0, cashBalance - minimumReserve)
+}

@@ -4,25 +4,37 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
+import { useBusinessStore } from '@/store/businessStore'
 import { getFixedCosts } from '@/lib/finance/snapshot'
+import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import {
   calculateAllowedCAC,
   calculateRequiredRevenue,
   calculateRequiredSales,
+  calculateWithdrawableAmount,
 } from '@/lib/finance/breakeven'
 import { calculateContributionMarginPct } from '@/lib/finance/formulas'
 import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
 
 const WORKING_DAYS_PER_MONTH = 30
+const MONTHS_PER_YEAR = 12
 
 export function SalesPage() {
   const { inputs, snapshot } = useFinancials()
+  const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const [targetProfitInput, setTargetProfitInput] = useState('')
+  const [annualTargetProfitInput, setAnnualTargetProfitInput] = useState('')
+  const [minimumReserveInput, setMinimumReserveInput] = useState('')
 
   const targetProfit = useMemo(() => {
     const parsed = Number(targetProfitInput.replace(/\s/g, '').replace(',', '.'))
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
   }, [targetProfitInput])
+
+  const annualTargetProfit = useMemo(() => {
+    const parsed = Number(annualTargetProfitInput.replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  }, [annualTargetProfitInput])
 
   const result = useMemo(() => {
     if (!inputs) return null
@@ -38,6 +50,25 @@ export function SalesPage() {
 
     return { requiredRevenue, requiredSales, requiredSalesPerDay, requiredAvgCheck, allowedCAC, requiredMarginPct, fixedCosts }
   }, [inputs, targetProfit])
+
+  const annualResult = useMemo(() => {
+    if (!inputs) return null
+    const annualFixedCosts = getFixedCosts(inputs) * MONTHS_PER_YEAR
+    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
+    const requiredAnnualRevenue = calculateRequiredRevenue(annualTargetProfit, annualFixedCosts, contributionMarginPct)
+    const requiredAnnualSales = calculateRequiredSales(requiredAnnualRevenue, inputs.avgCheck)
+    const requiredSalesPerMonth = requiredAnnualSales !== null ? requiredAnnualSales / MONTHS_PER_YEAR : null
+    const allowedCAC = calculateAllowedCAC(inputs.avgCheck, contributionMarginPct, annualTargetProfit, requiredAnnualSales)
+
+    return { requiredAnnualRevenue, requiredAnnualSales, requiredSalesPerMonth, allowedCAC }
+  }, [inputs, annualTargetProfit])
+
+  const cashBalance = cashFlowInputs ? buildCashFlowSummary(cashFlowInputs).closingBalance : 0
+  const minimumReserve = useMemo(() => {
+    const parsed = Number(minimumReserveInput.replace(/\s/g, '').replace(',', '.'))
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+  }, [minimumReserveInput])
+  const withdrawableNow = calculateWithdrawableAmount(cashBalance, minimumReserve)
 
   if (!inputs || !snapshot) return null
 
@@ -106,6 +137,78 @@ export function SalesPage() {
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Годовая цель</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2 space-y-5">
+          <div className="max-w-xs">
+            <Label htmlFor="annual-target-profit">Сколько чистыми за год вы хотите получить?</Label>
+            <Input
+              id="annual-target-profit"
+              inputMode="decimal"
+              placeholder="Например, 6000000"
+              value={annualTargetProfitInput}
+              onChange={(e) => setAnnualTargetProfitInput(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+
+          {annualTargetProfit > 0 && annualResult && (
+            <div className="rounded-xl border border-ink-800 bg-ink-900/50 p-5 space-y-4">
+              <FlowStep label="Цель на год" value={formatCurrency(annualTargetProfit)} />
+              <FlowStep
+                label="Необходимая годовая выручка"
+                value={annualResult.requiredAnnualRevenue !== null ? formatCurrency(annualResult.requiredAnnualRevenue) : 'недостижимо при текущей марже'}
+              />
+              <FlowStep label="Продаж в год" value={annualResult.requiredAnnualSales !== null ? formatNumber(annualResult.requiredAnnualSales) : '—'} />
+              <FlowStep label="Продаж в месяц" value={annualResult.requiredSalesPerMonth !== null ? formatNumber(annualResult.requiredSalesPerMonth) : '—'} />
+              <FlowStep
+                label="Допустимый CAC"
+                value={annualResult.allowedCAC !== null ? formatCurrency(annualResult.allowedCAC) : '—'}
+                tooltip="Максимальная стоимость привлечения одного клиента, при которой годовая цель по прибыли ещё достижима."
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
+            Сколько можно вывести
+            <InfoTooltip>
+              Сколько денег можно безопасно вывести из бизнеса прямо сейчас, не опускаясь ниже минимального резерва —
+              суммы, которую вы держите на непредвиденные расходы.
+            </InfoTooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2 space-y-4">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Metric label="Текущий остаток денег" value={formatCurrency(cashBalance)} />
+            <div className="max-w-xs">
+              <Label htmlFor="minimum-reserve">Минимальный резерв, ₽</Label>
+              <Input
+                id="minimum-reserve"
+                inputMode="decimal"
+                placeholder="Например, 500000"
+                value={minimumReserveInput}
+                onChange={(e) => setMinimumReserveInput(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-ink-800 bg-ink-900/50 p-5">
+            <FlowStep
+              label="Можно вывести сейчас"
+              value={formatCurrency(withdrawableNow)}
+              tooltip="Остаток денег на конец периода (из раздела Cash Flow) минус минимальный резерв."
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

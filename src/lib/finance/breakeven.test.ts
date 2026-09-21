@@ -6,6 +6,7 @@ import {
   calculateRequiredRevenue,
   calculateRequiredSales,
   calculateSafetyMarginPct,
+  calculateWithdrawableAmount,
 } from './breakeven'
 
 describe('calculateBreakEvenRevenue', () => {
@@ -69,5 +70,17 @@ describe('calculateAllowedCAC', () => {
   })
   it('returns null when required sales is zero (division by zero guard)', () => {
     expect(calculateAllowedCAC(1000, 0.3, 100, 0)).toBeNull()
+  })
+})
+
+describe('calculateWithdrawableAmount', () => {
+  it('returns the amount above the minimum reserve', () => {
+    expect(calculateWithdrawableAmount(500000, 200000)).toBe(300000)
+  })
+  it('clamps at zero when the balance is below the reserve', () => {
+    expect(calculateWithdrawableAmount(100000, 200000)).toBe(0)
+  })
+  it('handles a zero reserve as fully withdrawable', () => {
+    expect(calculateWithdrawableAmount(500000, 0)).toBe(500000)
   })
 })
