@@ -14,6 +14,19 @@ export interface ForecastOptions {
   currentEmployeesCount?: number
 }
 
+/**
+ * Средний темп роста выручки в % за месяц между первым и последним периодом истории (CAGR).
+ * null, если периодов меньше двух или выручка первого периода — 0 (не от чего считать рост).
+ */
+export function calculateAverageMonthlyGrowthRatePct(sortedHistory: FinancialInputs[]): number | null {
+  if (sortedHistory.length < 2) return null
+  const first = sortedHistory[0].revenue
+  const last = sortedHistory[sortedHistory.length - 1].revenue
+  if (first <= 0) return null
+  const intervals = sortedHistory.length - 1
+  return (Math.pow(last / first, 1 / intervals) - 1) * 100
+}
+
 export function calculateForecast(
   base: FinancialInputs,
   config: ForecastConfig,

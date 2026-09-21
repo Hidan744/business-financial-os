@@ -21,6 +21,7 @@ export const PROTECTABLE_ROUTES: { path: string; label: string }[] = [
   { path: '/app/balance', label: 'Баланс' },
   { path: '/app/cashflow', label: 'Cash Flow' },
   { path: '/app/history', label: 'История' },
+  { path: '/app/history-import', label: 'Импорт истории' },
   { path: '/app/simulator', label: 'Симулятор' },
   { path: '/app/sales', label: 'Продажи' },
   { path: '/app/forecast', label: 'Прогноз' },

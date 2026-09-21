@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/app/balance', label: 'Баланс' },
   { to: '/app/cashflow', label: 'Cash Flow' },
   { to: '/app/history', label: 'История' },
+  { to: '/app/history-import', label: 'Импорт истории' },
   { to: '/app/simulator', label: 'Симулятор' },
   { to: '/app/sales', label: 'Продажи' },
   { to: '/app/forecast', label: 'Прогноз' },

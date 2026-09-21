@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FinancialInputs } from '@/types/finance'
-import { calculateForecast } from './forecast'
+import { calculateAverageMonthlyGrowthRatePct, calculateForecast } from './forecast'
 import { DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 
 function makeInputs(): FinancialInputs {
@@ -49,5 +49,31 @@ describe('calculateForecast', () => {
   it('respects a custom number of months', () => {
     const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG, { months: 6 })
     expect(points).toHaveLength(6)
+  })
+})
+
+describe('calculateAverageMonthlyGrowthRatePct', () => {
+  function record(period: string, revenue: number): FinancialInputs {
+    return { ...makeInputs(), period, revenue }
+  }
+
+  it('returns null with fewer than two periods', () => {
+    expect(calculateAverageMonthlyGrowthRatePct([record('2026-06', 1000)])).toBeNull()
+    expect(calculateAverageMonthlyGrowthRatePct([])).toBeNull()
+  })
+
+  it('returns null when the first period has zero revenue', () => {
+    expect(calculateAverageMonthlyGrowthRatePct([record('2026-06', 0), record('2026-07', 1000)])).toBeNull()
+  })
+
+  it('computes CAGR between first and last period', () => {
+    // 1000 -> 1210 over 2 intervals => 10% per month
+    const rate = calculateAverageMonthlyGrowthRatePct([record('2026-06', 1000), record('2026-07', 1100), record('2026-08', 1210)])
+    expect(rate).toBeCloseTo(10, 5)
+  })
+
+  it('returns a negative rate for declining revenue', () => {
+    const rate = calculateAverageMonthlyGrowthRatePct([record('2026-06', 1000), record('2026-07', 900)])
+    expect(rate).toBeLessThan(0)
   })
 })

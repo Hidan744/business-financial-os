@@ -58,6 +58,8 @@ interface Store {
   closeCurrentPeriod: (nextPeriod: string) => Promise<void>
   /** Добавляет/перезаписывает запись истории вручную (backfill прошлых месяцев). */
   upsertHistoricalRecord: (record: FinancialInputs) => Promise<void>
+  /** Массово добавляет/перезаписывает несколько записей истории разом (импорт из Excel). */
+  importHistoricalRecords: (records: FinancialInputs[]) => Promise<void>
   removeHistoricalRecord: (period: string) => Promise<void>
   setTarget: (target: PeriodTarget) => Promise<void>
   removeTarget: (period: string) => Promise<void>
@@ -332,6 +334,15 @@ export const useBusinessStore = create<Store>((set, get) => ({
       ...b,
       history: [...b.history.filter((h) => h.period !== record.period), record].sort((a, c) => a.period.localeCompare(c.period)),
     }))
+  },
+
+  /** Массовая загрузка истории (импорт из Excel) — периоды, совпадающие с активным, пропускаются. */
+  importHistoricalRecords: async (records) => {
+    await mutateActiveBusiness(get, set, (b) => {
+      const importable = records.filter((r) => r.period !== b.financialInputs.period)
+      const existing = b.history.filter((h) => !importable.some((r) => r.period === h.period))
+      return { ...b, history: [...existing, ...importable].sort((a, c) => a.period.localeCompare(c.period)) }
+    })
   },
 
   removeHistoricalRecord: async (period) => {

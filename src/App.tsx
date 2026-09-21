@@ -18,6 +18,7 @@ const UnitEconomicsPage = lazy(() => import('@/pages/UnitEconomicsPage').then((m
 const TaxesPage = lazy(() => import('@/pages/TaxesPage').then((m) => ({ default: m.TaxesPage })))
 const CashflowPage = lazy(() => import('@/pages/CashflowPage').then((m) => ({ default: m.CashflowPage })))
 const HistoryPage = lazy(() => import('@/pages/HistoryPage').then((m) => ({ default: m.HistoryPage })))
+const HistoryImportPage = lazy(() => import('@/pages/HistoryImportPage').then((m) => ({ default: m.HistoryImportPage })))
 const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
 const SalesPage = lazy(() => import('@/pages/SalesPage').then((m) => ({ default: m.SalesPage })))
 const ForecastPage = lazy(() => import('@/pages/ForecastPage').then((m) => ({ default: m.ForecastPage })))
@@ -71,6 +72,7 @@ function App() {
             <Route path="unit-economics" element={<UnitEconomicsPage />} />
             <Route path="cashflow" element={<CashflowPage />} />
             <Route path="history" element={<HistoryPage />} />
+            <Route path="history-import" element={<HistoryImportPage />} />
             <Route path="simulator" element={<SimulatorPage />} />
             <Route path="sales" element={<SalesPage />} />
             <Route path="forecast" element={<ForecastPage />} />

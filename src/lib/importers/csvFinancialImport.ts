@@ -20,7 +20,7 @@ export type ImportableField = keyof Pick<
 >
 
 /** Заголовок колонки → поле модели. Несколько синонимов на колонку для терпимости к формату файла. */
-const COLUMN_ALIASES: Record<ImportableField, string[]> = {
+export const COLUMN_ALIASES: Record<ImportableField, string[]> = {
   revenue: ['выручка', 'revenue'],
   cogs: ['себестоимость', 'cogs'],
   payroll: ['фот', 'зарплата', 'payroll'],
@@ -37,7 +37,7 @@ const COLUMN_ALIASES: Record<ImportableField, string[]> = {
   salesCount: ['количество продаж', 'продажи', 'sales count', 'sales'],
 }
 
-const FIELD_LABELS: Record<ImportableField, string> = {
+export const FIELD_LABELS: Record<ImportableField, string> = {
   revenue: 'Выручка',
   cogs: 'Себестоимость',
   payroll: 'ФОТ',
@@ -60,11 +60,11 @@ export interface ImportResult {
   rowsFound: number
 }
 
-function normalizeHeader(header: string): string {
+export function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-function parseNumericCell(raw: string): number | null {
+export function parseNumericCell(raw: string): number | null {
   const cleaned = raw.replace(/[\s ]/g, '').replace(',', '.').replace(/[₽$€]/g, '')
   if (cleaned === '') return null
   const n = Number(cleaned)
