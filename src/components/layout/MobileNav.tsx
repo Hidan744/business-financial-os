@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard' },
   { to: '/app/finance', label: 'Финансы' },
   { to: '/app/cashflow', label: 'Cash Flow' },
+  { to: '/app/history', label: 'История' },
   { to: '/app/simulator', label: 'Симулятор' },
   { to: '/app/sales', label: 'Продажи' },
   { to: '/app/forecast', label: 'Прогноз' },

@@ -79,6 +79,8 @@ function makeBusiness(id: string, name: string): BusinessState {
     forecastConfig: { monthlyGrowthRatePct: 0, seasonality: Array(12).fill(1), marketingBudgetTrendPct: 0, avgCheckGrowthPct: 0, employeesGrowth: 0 },
     aiHistory: [],
     onboardingComplete: true,
+    history: [],
+    targets: [],
   }
 }
 

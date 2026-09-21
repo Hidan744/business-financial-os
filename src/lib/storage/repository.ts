@@ -1,5 +1,5 @@
 import type { BusinessProfile } from '@/types/business'
-import type { CashFlowInputs, FinancialInputs } from '@/types/finance'
+import type { CashFlowInputs, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import type { AiCfoMessage } from '@/types/ai'
 
@@ -11,6 +11,10 @@ export interface BusinessState {
   forecastConfig: ForecastConfig
   aiHistory: AiCfoMessage[]
   onboardingComplete: boolean
+  /** Закрытые (прошлые) периоды — реальные факты, не прогноз. Не включает текущий period. */
+  history: FinancialInputs[]
+  /** Целевые показатели по периодам для сравнения план/факт. */
+  targets: PeriodTarget[]
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */

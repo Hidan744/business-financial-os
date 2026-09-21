@@ -8,13 +8,27 @@ import { useFinancials } from '@/hooks/useFinancials'
 import { useDiagnostics } from '@/hooks/useDiagnostics'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 import { useBusinessStore } from '@/store/businessStore'
+import {
+  calculateApproxCostPerSale,
+  calculatePeriodGrowthPct,
+  calculateRevenuePerEmployee,
+} from '@/lib/finance/formulas'
+import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
 
 export function DashboardPage() {
   const { inputs, snapshot } = useFinancials()
   const diagnostics = useDiagnostics()
   const profile = useBusinessStore((s) => s.profile)
+  const history = useBusinessStore((s) => s.history)
 
-  if (!inputs || !snapshot || !diagnostics) return null
+  if (!inputs || !snapshot || !diagnostics || !profile) return null
+
+  const revenuePerEmployee = calculateRevenuePerEmployee(snapshot.revenue, profile.employeesCount)
+  const costPerSale = calculateApproxCostPerSale(inputs.marketing, inputs.salesCount)
+  const previousPeriod = [...history].sort((a, b) => b.period.localeCompare(a.period))[0]
+  const previousSnapshot = previousPeriod ? buildFinancialSnapshot(previousPeriod) : null
+  const revenueGrowthPct = previousSnapshot ? calculatePeriodGrowthPct(snapshot.revenue, previousSnapshot.revenue) : null
+  const profitGrowthPct = previousSnapshot ? calculatePeriodGrowthPct(snapshot.netProfit, previousSnapshot.netProfit) : null
 
   return (
     <div className="space-y-6">
@@ -70,6 +84,35 @@ export function DashboardPage() {
           value={formatPercent(snapshot.romiPct)}
           tooltip="Приблизительный возврат инвестиций в маркетинг: (выручка − расходы на рекламу) / расходы на рекламу. Оценка по всей выручке, так как продажи по рекламным каналам отдельно не учитываются."
           accent={snapshot.romiPct >= 0 ? 'positive' : 'negative'}
+        />
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {revenueGrowthPct !== null && (
+          <KpiCard
+            label="Рост выручки"
+            value={formatPercent(revenueGrowthPct)}
+            tooltip="Изменение выручки к предыдущему закрытому периоду. Появляется после закрытия хотя бы одного периода в разделе «История»."
+            accent={revenueGrowthPct >= 0 ? 'positive' : 'negative'}
+          />
+        )}
+        {profitGrowthPct !== null && (
+          <KpiCard
+            label="Рост чистой прибыли"
+            value={formatPercent(profitGrowthPct)}
+            tooltip="Изменение чистой прибыли к предыдущему закрытому периоду."
+            accent={profitGrowthPct >= 0 ? 'positive' : 'negative'}
+          />
+        )}
+        <KpiCard
+          label="Выручка на сотрудника"
+          value={revenuePerEmployee !== null ? formatCurrency(revenuePerEmployee) : '—'}
+          tooltip="Выручка ÷ количество сотрудников. Индикатор эффективности штата — задайте число сотрудников в Настройках."
+        />
+        <KpiCard
+          label="Стоимость продажи (оценка)"
+          value={costPerSale !== null ? formatCurrency(costPerSale) : '—'}
+          tooltip="Приблизительно: расходы на рекламу ÷ количество продаж. Не настоящий CAC — система не различает, какие продажи пришли именно из рекламы."
         />
       </div>
 

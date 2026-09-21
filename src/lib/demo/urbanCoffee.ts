@@ -1,4 +1,5 @@
 import type { BusinessState } from '@/lib/storage/repository'
+import type { FinancialInputs } from '@/types/finance'
 import { DEFAULT_FORECAST_CONFIG, STANDARD_SCENARIOS } from '@/types/scenario'
 
 const CURRENT_PERIOD = new Date().toISOString().slice(0, 7)
@@ -6,6 +7,35 @@ const CURRENT_PERIOD = new Date().toISOString().slice(0, 7)
 // Фиксированный валидный UUID — id используется как первичный ключ (uuid) в Supabase,
 // а фиксированное значение делает loadDemo() идемпотентным (повторный вызов не дублирует бизнес).
 const DEMO_BUSINESS_ID = '00000000-0000-4000-8000-000000000001'
+
+function shiftPeriod(period: string, monthsBack: number): string {
+  const [year, month] = period.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1 - monthsBack, 1))
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function historicalMonth(businessId: string, period: string, revenue: number, salesCount: number): FinancialInputs {
+  const avgCheck = Math.round(revenue / salesCount)
+  return {
+    businessId,
+    period,
+    revenue,
+    cogs: Math.round(revenue * 0.3),
+    payroll: 500000,
+    rent: 220000,
+    marketing: Math.round(revenue * 0.062),
+    logistics: 0,
+    utilities: 0,
+    software: 0,
+    customExpenseLines: [{ id: 'other', label: 'Прочие расходы', amount: 170000 }],
+    depreciation: 0,
+    loanInterest: 0,
+    taxes: Math.round(revenue * 0.0375),
+    loanPayments: 50000,
+    avgCheck,
+    salesCount,
+  }
+}
 
 export function createUrbanCoffeeDemo(): BusinessState {
   const businessId = DEMO_BUSINESS_ID
@@ -72,5 +102,13 @@ export function createUrbanCoffeeDemo(): BusinessState {
     },
     aiHistory: [],
     onboardingComplete: true,
+    history: [
+      historicalMonth(businessId, shiftPeriod(CURRENT_PERIOD, 3), 2100000, 2530),
+      historicalMonth(businessId, shiftPeriod(CURRENT_PERIOD, 2), 2220000, 2660),
+      historicalMonth(businessId, shiftPeriod(CURRENT_PERIOD, 1), 2300000, 2760),
+    ],
+    targets: [
+      { period: CURRENT_PERIOD, targetRevenue: 2500000, targetNetProfit: 550000, targetSalesCount: 2900 },
+    ],
   }
 }

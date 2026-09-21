@@ -56,3 +56,20 @@ export function calculateDebtLoad(loanPayments: number, revenue: number): number
   if (revenue <= 0) return null
   return (loanPayments / revenue) * 100
 }
+
+export function calculateRevenuePerEmployee(revenue: number, employeesCount: number): number | null {
+  if (employeesCount <= 0) return null
+  return revenue / employeesCount
+}
+
+/** Приблизительная стоимость продажи: реклама / кол-во продаж — не настоящий CAC (нет данных по новым клиентам). */
+export function calculateApproxCostPerSale(marketing: number, salesCount: number): number | null {
+  if (salesCount <= 0) return null
+  return marketing / salesCount
+}
+
+/** % изменения показателя к предыдущему значению. null, если базовое значение — 0 (нет смысла считать %). */
+export function calculatePeriodGrowthPct(current: number, previous: number): number | null {
+  if (previous === 0) return null
+  return ((current - previous) / Math.abs(previous)) * 100
+}

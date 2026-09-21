@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calculateApproxCostPerSale,
   calculateDebtLoad,
   calculateEBITDA,
   calculateEBITDAMargin,
@@ -7,8 +8,10 @@ import {
   calculateGrossProfit,
   calculateNetMargin,
   calculateNetProfit,
+  calculatePeriodGrowthPct,
   calculateROI,
   calculateROMI,
+  calculateRevenuePerEmployee,
   calculateContributionMarginPct,
 } from './formulas'
 
@@ -87,5 +90,39 @@ describe('calculateDebtLoad', () => {
   })
   it('computes percentage of revenue', () => {
     expect(calculateDebtLoad(100, 1000)).toBe(10)
+  })
+})
+
+describe('calculateRevenuePerEmployee', () => {
+  it('divides revenue by headcount', () => {
+    expect(calculateRevenuePerEmployee(800000, 8)).toBe(100000)
+  })
+  it('returns null when there are no employees (division by zero guard)', () => {
+    expect(calculateRevenuePerEmployee(800000, 0)).toBeNull()
+  })
+})
+
+describe('calculateApproxCostPerSale', () => {
+  it('divides marketing spend by sales count', () => {
+    expect(calculateApproxCostPerSale(150000, 3000)).toBe(50)
+  })
+  it('returns null when there are no sales', () => {
+    expect(calculateApproxCostPerSale(150000, 0)).toBeNull()
+  })
+})
+
+describe('calculatePeriodGrowthPct', () => {
+  it('computes percentage growth between two periods', () => {
+    expect(calculatePeriodGrowthPct(2400000, 2300000)).toBeCloseTo(4.35, 1)
+  })
+  it('computes negative growth (decline)', () => {
+    expect(calculatePeriodGrowthPct(1800000, 2000000)).toBeCloseTo(-10, 5)
+  })
+  it('returns null when the previous value is zero (division by zero guard)', () => {
+    expect(calculatePeriodGrowthPct(1000, 0)).toBeNull()
+  })
+  it('handles a negative previous value using its absolute value as the base', () => {
+    // прибыль выросла с -100 000 до 50 000 — рост в абсолютном выражении, а не "-150%"
+    expect(calculatePeriodGrowthPct(50000, -100000)).toBeCloseTo(150, 5)
   })
 })

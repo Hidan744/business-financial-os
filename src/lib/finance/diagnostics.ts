@@ -6,7 +6,8 @@ import type {
   DiagnosticResult,
   HealthStatus,
 } from '@/types/diagnostics'
-import { formatCurrency, formatPercent } from '@/lib/utils'
+import { formatCurrency, formatPercent, formatSigned } from '@/lib/utils'
+import { buildFinancialSnapshot } from './snapshot'
 
 /**
  * Пороговые значения для оценки финансового здоровья.
@@ -22,6 +23,8 @@ const THRESHOLDS = {
   fixedCostsShare: { stable: 40, attention: 55 },
   debtLoad: { stable: 15, attention: 30 },
   cashFlow: { stable: 0 },
+  revenueDynamics: { stable: 0, attention: -10 }, // % изменения к предыдущему периоду
+  profitDynamics: { stable: 0, attention: -15 },
 } as const
 
 function statusFor(value: number, stableThreshold: number, attentionThreshold: number, higherIsBetter: boolean): HealthStatus {
@@ -37,7 +40,11 @@ function statusFor(value: number, stableThreshold: number, attentionThreshold: n
 
 const STATUS_SCORE: Record<HealthStatus, number> = { stable: 100, attention: 55, critical: 15 }
 
-export function buildDiagnosticFactors(inputs: FinancialInputs, snapshot: FinancialSnapshot): DiagnosticFactor[] {
+export function buildDiagnosticFactors(
+  inputs: FinancialInputs,
+  snapshot: FinancialSnapshot,
+  previousPeriod?: FinancialInputs,
+): DiagnosticFactor[] {
   // При нулевой выручке доля расходов от выручки не определена (0/0). Мы не можем
   // засчитать это как "здорово" — это сигнал критического состояния (бизнес без выручки).
   const hasRevenue = inputs.revenue > 0
@@ -121,6 +128,34 @@ export function buildDiagnosticFactors(inputs: FinancialInputs, snapshot: Financ
     },
   ]
 
+  // Динамика — только если есть факт за предыдущий закрытый период (не выдумываем тренд из ничего).
+  if (previousPeriod && previousPeriod.revenue > 0) {
+    const previousSnapshot = buildFinancialSnapshot(previousPeriod)
+    const revenueDynamicsPct = ((snapshot.revenue - previousSnapshot.revenue) / previousSnapshot.revenue) * 100
+    factors.push({
+      id: 'revenueDynamics',
+      label: 'Динамика выручки к пред. периоду',
+      value: revenueDynamicsPct,
+      unit: '%',
+      weight: 0.1,
+      status: statusFor(revenueDynamicsPct, THRESHOLDS.revenueDynamics.stable, THRESHOLDS.revenueDynamics.attention, true),
+      explanation: `Выручка изменилась на ${formatSigned(revenueDynamicsPct, formatPercent)} к предыдущему периоду (${formatCurrency(previousSnapshot.revenue)} → ${formatCurrency(snapshot.revenue)}).`,
+    })
+
+    if (previousSnapshot.netProfit !== 0) {
+      const profitDynamicsPct = ((snapshot.netProfit - previousSnapshot.netProfit) / Math.abs(previousSnapshot.netProfit)) * 100
+      factors.push({
+        id: 'profitDynamics',
+        label: 'Динамика чистой прибыли к пред. периоду',
+        value: profitDynamicsPct,
+        unit: '%',
+        weight: 0.1,
+        status: statusFor(profitDynamicsPct, THRESHOLDS.profitDynamics.stable, THRESHOLDS.profitDynamics.attention, true),
+        explanation: `Чистая прибыль изменилась на ${formatSigned(profitDynamicsPct, formatPercent)} к предыдущему периоду (${formatCurrency(previousSnapshot.netProfit)} → ${formatCurrency(snapshot.netProfit)}).`,
+      })
+    }
+  }
+
   return factors
 }
 
@@ -155,6 +190,8 @@ function problemTitle(id: string): string {
     marketingShare: 'Высокая доля рекламных расходов',
     fixedCostsShare: 'Высокая доля постоянных расходов',
     debtLoad: 'Высокая долговая нагрузка',
+    revenueDynamics: 'Падение выручки к прошлому периоду',
+    profitDynamics: 'Падение чистой прибыли к прошлому периоду',
   }
   return titles[id] ?? id
 }
@@ -203,6 +240,16 @@ function buildActionPlan(problems: DiagnosticProblem[]): ActionPlanItem[] {
       effect: 'Снижение ежемесячной долговой нагрузки',
       metric: 'Долговая нагрузка, %',
     },
+    revenueDynamics: {
+      action: 'Разобрать по каналам, где именно упали продажи — сравнить с прошлым периодом по неделям',
+      effect: 'Остановка дальнейшего падения выручки',
+      metric: 'Динамика выручки, %',
+    },
+    profitDynamics: {
+      action: 'Сравнить структуру расходов текущего и прошлого периода — найти, что выросло быстрее выручки',
+      effect: 'Восстановление рентабельности до уровня прошлого периода',
+      metric: 'Динамика чистой прибыли, %',
+    },
   }
 
   return top.map((problem, idx) => {
@@ -222,8 +269,12 @@ function buildActionPlan(problems: DiagnosticProblem[]): ActionPlanItem[] {
   })
 }
 
-export function runDiagnostics(inputs: FinancialInputs, snapshot: FinancialSnapshot): DiagnosticResult {
-  const factors = buildDiagnosticFactors(inputs, snapshot)
+export function runDiagnostics(
+  inputs: FinancialInputs,
+  snapshot: FinancialSnapshot,
+  previousPeriod?: FinancialInputs,
+): DiagnosticResult {
+  const factors = buildDiagnosticFactors(inputs, snapshot, previousPeriod)
   const { status, score } = computeHealthStatus(factors)
   const problems = buildProblems(factors)
   const actionPlan = buildActionPlan(problems)

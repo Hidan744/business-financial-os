@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { BusinessProfile } from '@/types/business'
-import type { CashFlowInputs, CustomExpenseLine, FinancialInputs } from '@/types/finance'
+import type { CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
@@ -22,6 +22,8 @@ interface Store {
   scenarios: Scenario[]
   forecastConfig: ForecastConfig
   aiHistory: AiCfoMessage[]
+  history: FinancialInputs[]
+  targets: PeriodTarget[]
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -36,6 +38,13 @@ interface Store {
   updateProfile: (patch: Partial<BusinessProfile>) => Promise<void>
   setForecastConfig: (config: ForecastConfig) => Promise<void>
   addAiMessage: (message: AiCfoMessage) => Promise<void>
+  /** Переносит текущий период в историю (факт) и открывает новый активный период. */
+  closeCurrentPeriod: (nextPeriod: string) => Promise<void>
+  /** Добавляет/перезаписывает запись истории вручную (backfill прошлых месяцев). */
+  upsertHistoricalRecord: (record: FinancialInputs) => Promise<void>
+  removeHistoricalRecord: (period: string) => Promise<void>
+  setTarget: (target: PeriodTarget) => Promise<void>
+  removeTarget: (period: string) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -67,6 +76,9 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     scenarios: active?.scenarios ?? STANDARD_SCENARIOS,
     forecastConfig: active?.forecastConfig ?? DEFAULT_FORECAST_CONFIG,
     aiHistory: active?.aiHistory ?? [],
+    // ?? [] — защита от записей, сохранённых до появления истории/целей (старая форма BusinessState).
+    history: active?.history ?? [],
+    targets: active?.targets ?? [],
   }
 }
 
@@ -90,7 +102,9 @@ async function mutateActiveBusiness(
 ) {
   const { businesses, activeBusinessId } = get()
   if (!activeBusinessId || !businesses[activeBusinessId]) return
-  const nextBusinesses = { ...businesses, [activeBusinessId]: updater(businesses[activeBusinessId]) }
+  const current = businesses[activeBusinessId]
+  const normalized: BusinessState = { ...current, history: current.history ?? [], targets: current.targets ?? [] }
+  const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
   await persist(get)
 }
@@ -106,6 +120,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
   scenarios: STANDARD_SCENARIOS,
   forecastConfig: DEFAULT_FORECAST_CONFIG,
   aiHistory: [],
+  history: [],
+  targets: [],
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -156,6 +172,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       forecastConfig: DEFAULT_FORECAST_CONFIG,
       aiHistory: [],
       onboardingComplete: true,
+      history: [],
+      targets: [],
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -233,6 +251,48 @@ export const useBusinessStore = create<Store>((set, get) => ({
     await mutateActiveBusiness(get, set, (b) => ({ ...b, aiHistory: [...b.aiHistory, message] }))
   },
 
+  closeCurrentPeriod: async (nextPeriod) => {
+    await mutateActiveBusiness(get, set, (b) => {
+      const closedRecord = { ...b.financialInputs }
+      const history = [...b.history.filter((h) => h.period !== closedRecord.period), closedRecord]
+      const nextFinancialInputs: FinancialInputs = {
+        ...b.financialInputs,
+        period: nextPeriod,
+        revenue: 0,
+        salesCount: 0,
+      }
+      return { ...b, history, financialInputs: nextFinancialInputs }
+    })
+  },
+
+  upsertHistoricalRecord: async (record) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      history: [...b.history.filter((h) => h.period !== record.period), record].sort((a, c) => a.period.localeCompare(c.period)),
+    }))
+  },
+
+  removeHistoricalRecord: async (period) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      history: b.history.filter((h) => h.period !== period),
+    }))
+  },
+
+  setTarget: async (target) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      targets: [...b.targets.filter((t) => t.period !== target.period), target],
+    }))
+  },
+
+  removeTarget: async (period) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      targets: b.targets.filter((t) => t.period !== period),
+    }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -246,6 +306,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       scenarios: STANDARD_SCENARIOS,
       forecastConfig: DEFAULT_FORECAST_CONFIG,
       aiHistory: [],
+      history: [],
+      targets: [],
     })
   },
 }))

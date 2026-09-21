@@ -51,6 +51,14 @@ export interface CashFlowInputs {
   }
 }
 
+/** Целевые показатели ("бюджет"), которые пользователь задаёт на период для сравнения план/факт. */
+export interface PeriodTarget {
+  period: string // '2026-09'
+  targetRevenue: number
+  targetNetProfit: number
+  targetSalesCount: number
+}
+
 export interface FinancialSnapshot {
   revenue: number
   cogs: number

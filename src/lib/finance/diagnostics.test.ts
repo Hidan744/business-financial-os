@@ -69,4 +69,29 @@ describe('runDiagnostics', () => {
     const result = runDiagnostics(inputs, buildFinancialSnapshot(inputs))
     expect(result.healthStatus).toBe('critical')
   })
+
+  it('does not include dynamics factors when there is no previous period (no data to fabricate a trend from)', () => {
+    const inputs = makeInputs()
+    const result = runDiagnostics(inputs, buildFinancialSnapshot(inputs))
+    expect(result.factors.find((f) => f.id === 'revenueDynamics')).toBeUndefined()
+    expect(result.factors.find((f) => f.id === 'profitDynamics')).toBeUndefined()
+  })
+
+  it('flags a revenue decline vs the previous period as a problem', () => {
+    const previous = makeInputs({ period: '2026-08', revenue: 3000000 })
+    const inputs = makeInputs({ revenue: 2400000 }) // -20% vs previous
+    const result = runDiagnostics(inputs, buildFinancialSnapshot(inputs), previous)
+    const factor = result.factors.find((f) => f.id === 'revenueDynamics')
+    expect(factor?.status).toBe('critical')
+    expect(factor?.value).toBeCloseTo(-20, 1)
+    expect(result.problems.some((p) => p.id === 'revenueDynamics')).toBe(true)
+  })
+
+  it('marks flat-or-growing revenue as stable, not a problem', () => {
+    const previous = makeInputs({ period: '2026-08', revenue: 2000000 })
+    const inputs = makeInputs({ revenue: 2400000 }) // +20%
+    const result = runDiagnostics(inputs, buildFinancialSnapshot(inputs), previous)
+    const factor = result.factors.find((f) => f.id === 'revenueDynamics')
+    expect(factor?.status).toBe('stable')
+  })
 })
