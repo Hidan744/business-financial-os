@@ -37,7 +37,7 @@ export function KpiCard({
       </div>
       <div
         className={cn(
-          'text-2xl font-semibold tracking-tight',
+          'font-display text-2xl font-bold tracking-tight',
           accent === 'positive' && 'text-positive-500',
           accent === 'negative' && 'text-negative-500',
           accent === 'neutral' && 'text-ink-50',
