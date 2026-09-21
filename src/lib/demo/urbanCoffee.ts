@@ -129,5 +129,16 @@ export function createUrbanCoffeeDemo(): BusinessState {
       { id: 'emp8', name: 'Наталья Лебедева', role: 'Клинер', salary: 40000, hireDate: '2024-06-01' },
     ],
     plannedHires: [],
+    goals: [
+      {
+        id: 'goal1',
+        title: 'Выручка 3 000 000 ₽ в месяц',
+        metric: 'revenue',
+        targetValue: 3000000,
+        targetPeriod: shiftPeriod(CURRENT_PERIOD, -6),
+        createdPeriod: CURRENT_PERIOD,
+        baselineValue: 2400000,
+      },
+    ],
   }
 }

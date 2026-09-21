@@ -13,6 +13,7 @@ import {
   Landmark,
   Scale,
   Users,
+  Flag,
   FileText,
   Settings,
   Sparkles,
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },
   { to: '/app/debts', label: 'Долги', icon: Landmark },
   { to: '/app/hr', label: 'Сотрудники', icon: Users },
+  { to: '/app/goals', label: 'Цели', icon: Flag },
   { to: '/app/report', label: 'Отчёт', icon: FileText },
   { to: '/app/settings', label: 'Настройки', icon: Settings },
 ]

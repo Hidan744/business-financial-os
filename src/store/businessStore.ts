@@ -3,6 +3,7 @@ import type { BusinessProfile } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
 import type { Employee, PlannedHire } from '@/types/hr'
+import type { Goal } from '@/types/goal'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
@@ -29,6 +30,7 @@ interface Store {
   balanceSheet: BalanceSheetInputs | null
   employees: Employee[]
   plannedHires: PlannedHire[]
+  goals: Goal[]
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -58,6 +60,8 @@ interface Store {
   removePlannedHire: (id: string) => Promise<void>
   /** Записывает ФОТ, посчитанный по штату, в financialInputs.payroll. */
   syncPayrollFromEmployees: () => Promise<void>
+  addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>
+  removeGoal: (id: string) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -96,6 +100,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     balanceSheet: active ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs.period)) : null,
     employees: active?.employees ?? [],
     plannedHires: active?.plannedHires ?? [],
+    goals: active?.goals ?? [],
   }
 }
 
@@ -127,6 +132,7 @@ async function mutateActiveBusiness(
     balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs.period),
     employees: current.employees ?? [],
     plannedHires: current.plannedHires ?? [],
+    goals: current.goals ?? [],
   }
   const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
@@ -149,6 +155,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   balanceSheet: null,
   employees: [],
   plannedHires: [],
+  goals: [],
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -204,6 +211,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       balanceSheet: emptyBalanceSheet(profile.id, financialInputs.period),
       employees: [],
       plannedHires: [],
+      goals: [],
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -359,6 +367,15 @@ export const useBusinessStore = create<Store>((set, get) => ({
     }))
   },
 
+  addGoal: async (goal) => {
+    const newGoal = { ...goal, id: generateId('goal') }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, goals: [...b.goals, newGoal] }))
+  },
+
+  removeGoal: async (id) => {
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, goals: b.goals.filter((g) => g.id !== id) }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -377,6 +394,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       balanceSheet: null,
       employees: [],
       plannedHires: [],
+      goals: [],
     })
   },
 }))

@@ -55,6 +55,7 @@ function makeLegacyBusinessState(): BusinessState {
     },
     employees: [],
     plannedHires: [],
+    goals: [],
     onboardingComplete: true,
   }
 }
