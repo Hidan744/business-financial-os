@@ -28,3 +28,30 @@ export function splitFirstMonthPayment(principal: number, annualRatePct: number,
   const principalRepayment = payment - interest
   return { payment, interest, principalRepayment }
 }
+
+export interface AmortizationRow {
+  month: number
+  payment: number
+  interest: number
+  principal: number
+  remainingBalance: number
+}
+
+/** Полный график погашения аннуитетного кредита по месяцам. */
+export function buildAmortizationSchedule(principal: number, annualRatePct: number, termMonths: number): AmortizationRow[] {
+  const payment = calculateAnnuityPayment(principal, annualRatePct, termMonths)
+  if (payment === null) return []
+
+  const monthlyRate = annualRatePct / 100 / 12
+  const rows: AmortizationRow[] = []
+  let balance = principal
+
+  for (let month = 1; month <= termMonths; month++) {
+    const interest = balance * monthlyRate
+    const principalPortion = month === termMonths ? balance : payment - interest
+    balance = Math.max(0, balance - principalPortion)
+    rows.push({ month, payment, interest, principal: principalPortion, remainingBalance: balance })
+  }
+
+  return rows
+}

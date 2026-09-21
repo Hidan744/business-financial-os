@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { to: '/app/ai-cfo', label: 'AI CFO' },
   { to: '/app/crisis', label: 'Антикризис' },
   { to: '/app/stress-test', label: 'Стресс-тест' },
+  { to: '/app/debts', label: 'Долги' },
   { to: '/app/report', label: 'Отчёт' },
   { to: '/app/settings', label: 'Настройки' },
 ]

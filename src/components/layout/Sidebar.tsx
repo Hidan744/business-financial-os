@@ -10,6 +10,7 @@ import {
   Bot,
   AlertTriangle,
   Zap,
+  Landmark,
   FileText,
   Settings,
   Sparkles,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { to: '/app/ai-cfo', label: 'AI CFO', icon: Bot },
   { to: '/app/crisis', label: 'Антикризис', icon: AlertTriangle },
   { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },
+  { to: '/app/debts', label: 'Долги', icon: Landmark },
   { to: '/app/report', label: 'Отчёт', icon: FileText },
   { to: '/app/settings', label: 'Настройки', icon: Settings },
 ]

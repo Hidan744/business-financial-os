@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateAnnuityPayment, splitFirstMonthPayment } from './loan'
+import { buildAmortizationSchedule, calculateAnnuityPayment, splitFirstMonthPayment } from './loan'
 
 describe('calculateAnnuityPayment', () => {
   it('returns null for non-positive principal or term', () => {
@@ -35,5 +35,37 @@ describe('splitFirstMonthPayment', () => {
     const split = splitFirstMonthPayment(1200000, 0, 12)
     expect(split!.interest).toBe(0)
     expect(split!.principalRepayment).toBe(split!.payment)
+  })
+})
+
+describe('buildAmortizationSchedule', () => {
+  it('returns an empty schedule when the payment cannot be computed', () => {
+    expect(buildAmortizationSchedule(0, 18, 12)).toEqual([])
+  })
+
+  it('has one row per month, ending at a zero balance', () => {
+    const schedule = buildAmortizationSchedule(1000000, 18, 12)
+    expect(schedule).toHaveLength(12)
+    expect(schedule[11].remainingBalance).toBeCloseTo(0, 5)
+  })
+
+  it('has a decreasing interest portion and increasing principal portion over time', () => {
+    const schedule = buildAmortizationSchedule(1000000, 18, 12)
+    expect(schedule[0].interest).toBeGreaterThan(schedule[11].interest)
+    expect(schedule[0].principal).toBeLessThan(schedule[11].principal)
+  })
+
+  it('every row payment equals interest + principal', () => {
+    const schedule = buildAmortizationSchedule(1000000, 18, 12)
+    for (const row of schedule) {
+      expect(row.interest + row.principal).toBeCloseTo(row.payment, 5)
+    }
+  })
+
+  it('handles a zero-rate loan as equal principal-only installments', () => {
+    const schedule = buildAmortizationSchedule(1200000, 0, 12)
+    expect(schedule[0].interest).toBe(0)
+    expect(schedule[0].principal).toBeCloseTo(100000, 5)
+    expect(schedule[11].remainingBalance).toBeCloseTo(0, 5)
   })
 })
