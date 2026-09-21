@@ -60,4 +60,21 @@ describe('buildFinancialSnapshot — edge cases', () => {
     const snapshot = buildFinancialSnapshot(makeInputs({ avgCheck: 0 }))
     expect(snapshot.breakEvenSales).toBe(0)
   })
+
+  it('debtToEbitda is null (not NaN/Infinity) when EBITDA is zero or negative', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs({ revenue: 100000, payroll: 900000 }))
+    expect(snapshot.ebitda).toBeLessThan(0)
+    expect(snapshot.debtToEbitda).toBeNull()
+  })
+
+  it('dscr is null (not NaN/Infinity) when there is no debt service', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs({ loanPayments: 0, loanInterest: 0 }))
+    expect(snapshot.dscr).toBeNull()
+  })
+
+  it('dscr is a finite number when there is debt service and positive EBITDA', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs())
+    expect(snapshot.dscr).not.toBeNull()
+    expect(Number.isFinite(snapshot.dscr)).toBe(true)
+  })
 })

@@ -22,6 +22,15 @@ export function calculateEBITDAMargin(ebitda: number, revenue: number): number |
   return (ebitda / revenue) * 100
 }
 
+export function calculateEBIT(ebitda: number, depreciation: number): number {
+  return ebitda - depreciation
+}
+
+export function calculateEBITMargin(ebit: number, revenue: number): number | null {
+  if (revenue <= 0) return null
+  return (ebit / revenue) * 100
+}
+
 export function calculateNetProfit(
   ebitda: number,
   depreciation: number,
@@ -72,4 +81,19 @@ export function calculateApproxCostPerSale(marketing: number, salesCount: number
 export function calculatePeriodGrowthPct(current: number, previous: number): number | null {
   if (previous === 0) return null
   return ((current - previous) / Math.abs(previous)) * 100
+}
+
+/** Долговая нагрузка относительно операционной прибыли: годовой долг / годовая EBITDA. */
+export function calculateDebtToEBITDA(annualDebt: number, annualEBITDA: number): number | null {
+  if (annualEBITDA <= 0) return null
+  return annualDebt / annualEBITDA
+}
+
+/**
+ * Debt Service Coverage Ratio: во сколько раз EBITDA покрывает обязательные платежи по долгу
+ * (тело + проценты) за период. ≥1.2 — обычно считается безопасным ориентиром.
+ */
+export function calculateDSCR(ebitda: number, debtService: number): number | null {
+  if (debtService <= 0) return null
+  return ebitda / debtService
 }

@@ -2,8 +2,12 @@ import type { FinancialInputs, FinancialSnapshot } from '@/types/finance'
 import {
   calculateContributionMarginPct,
   calculateDebtLoad,
+  calculateDebtToEBITDA,
+  calculateDSCR,
+  calculateEBIT,
   calculateEBITDA,
   calculateEBITDAMargin,
+  calculateEBITMargin,
   calculateGrossMargin,
   calculateGrossProfit,
   calculateNetMargin,
@@ -40,6 +44,9 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
   const ebitda = calculateEBITDA(grossProfit, fixedCosts)
   const ebitdaMarginPct = calculateEBITDAMargin(ebitda, inputs.revenue) ?? 0
 
+  const ebit = calculateEBIT(ebitda, inputs.depreciation)
+  const ebitMarginPct = calculateEBITMargin(ebit, inputs.revenue) ?? 0
+
   const netProfit = calculateNetProfit(ebitda, inputs.depreciation, inputs.loanInterest, inputs.taxes)
   const netMarginPct = calculateNetMargin(netProfit, inputs.revenue) ?? 0
 
@@ -54,6 +61,8 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
 
   const romiPct = calculateROMI(inputs.revenue, inputs.marketing) ?? 0
   const debtLoadPct = calculateDebtLoad(inputs.loanPayments, inputs.revenue) ?? 0
+  const debtToEbitda = calculateDebtToEBITDA(inputs.loanPayments * 12, ebitda * 12)
+  const dscr = calculateDSCR(ebitda, inputs.loanPayments + inputs.loanInterest)
 
   return {
     revenue: inputs.revenue,
@@ -64,6 +73,8 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
     variableCosts,
     ebitda,
     ebitdaMarginPct,
+    ebit,
+    ebitMarginPct,
     netProfit,
     netMarginPct,
     contributionMarginPct: contributionMarginPct * 100,
@@ -73,5 +84,7 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
     cashFlow,
     romiPct,
     debtLoadPct,
+    debtToEbitda,
+    dscr,
   }
 }

@@ -30,6 +30,12 @@ export function DashboardPage() {
   const revenueGrowthPct = previousSnapshot ? calculatePeriodGrowthPct(snapshot.revenue, previousSnapshot.revenue) : null
   const profitGrowthPct = previousSnapshot ? calculatePeriodGrowthPct(snapshot.netProfit, previousSnapshot.netProfit) : null
 
+  const yoyPeriod = getPeriodOneYearAgo(inputs.period)
+  const yoyRecord = history.find((h) => h.period === yoyPeriod)
+  const yoySnapshot = yoyRecord ? buildFinancialSnapshot(yoyRecord) : null
+  const revenueYoyPct = yoySnapshot ? calculatePeriodGrowthPct(snapshot.revenue, yoySnapshot.revenue) : null
+  const profitYoyPct = yoySnapshot ? calculatePeriodGrowthPct(snapshot.netProfit, yoySnapshot.netProfit) : null
+
   return (
     <div className="space-y-6">
       <div>
@@ -104,6 +110,22 @@ export function DashboardPage() {
             accent={profitGrowthPct >= 0 ? 'positive' : 'negative'}
           />
         )}
+        {revenueYoyPct !== null && (
+          <KpiCard
+            label="Рост выручки г/г"
+            value={formatPercent(revenueYoyPct)}
+            tooltip={`Изменение выручки по сравнению с тем же месяцем год назад (${yoyPeriod}). Появляется, когда в «Истории» закрыт период 12 месяцев назад.`}
+            accent={revenueYoyPct >= 0 ? 'positive' : 'negative'}
+          />
+        )}
+        {profitYoyPct !== null && (
+          <KpiCard
+            label="Рост прибыли г/г"
+            value={formatPercent(profitYoyPct)}
+            tooltip={`Изменение чистой прибыли по сравнению с тем же месяцем год назад (${yoyPeriod}).`}
+            accent={profitYoyPct >= 0 ? 'positive' : 'negative'}
+          />
+        )}
         <KpiCard
           label="Выручка на сотрудника"
           value={revenuePerEmployee !== null ? formatCurrency(revenuePerEmployee) : '—'}
@@ -140,4 +162,10 @@ export function DashboardPage() {
       </div>
     </div>
   )
+}
+
+/** Период того же месяца год назад, напр. '2026-09' → '2025-09'. */
+function getPeriodOneYearAgo(period: string): string {
+  const [year, month] = period.split('-')
+  return `${Number(year) - 1}-${month}`
 }

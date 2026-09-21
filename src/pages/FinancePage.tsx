@@ -74,6 +74,15 @@ export function FinancePage() {
             editable
             onChange={(v) => updateFinancialInputs({ depreciation: v })}
           />
+
+          <PnLRow
+            label="EBIT"
+            value={snapshot.ebit}
+            sign="="
+            kind="subtotal"
+            extra={<InfoTooltip>Операционная прибыль после амортизации, но до процентов и налогов.</InfoTooltip>}
+          />
+
           <PnLRow
             label="Проценты по кредитам"
             value={inputs.loanInterest}
@@ -87,18 +96,59 @@ export function FinancePage() {
         </CardContent>
       </Card>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <div className="text-xs text-ink-400 mb-1">Постоянные расходы (всего)</div>
-          <div className="text-lg font-semibold text-ink-50">
-            {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(fixedCosts)}
+      <Card className="p-5">
+        <div className="text-xs text-ink-400 mb-1">Постоянные расходы (всего)</div>
+        <div className="text-lg font-semibold text-ink-50">
+          {new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(fixedCosts)}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Рентабельность</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <MarginTile
+              label="Валовая маржа"
+              value={snapshot.grossMarginPct}
+              tooltip="(Выручка − Себестоимость) / Выручка. Сколько остаётся после прямых затрат на товар/услугу."
+            />
+            <MarginTile
+              label="Маржинальная прибыль"
+              value={snapshot.contributionMarginPct}
+              tooltip="(Выручка − Переменные затраты) / Выручка. Доля выручки, покрывающая постоянные расходы."
+            />
+            <MarginTile
+              label="EBITDA маржа"
+              value={snapshot.ebitdaMarginPct}
+              tooltip="EBITDA / Выручка. Операционная эффективность без учёта амортизации, процентов и налогов."
+            />
+            <MarginTile
+              label="EBIT маржа"
+              value={snapshot.ebitMarginPct}
+              tooltip="EBIT / Выручка. Операционная эффективность с учётом амортизации, но без процентов и налогов."
+            />
+            <MarginTile
+              label="Чистая маржа"
+              value={snapshot.netMarginPct}
+              tooltip="Чистая прибыль / Выручка. Итоговая доходность бизнеса после всех расходов."
+            />
           </div>
-        </Card>
-        <Card className="p-5">
-          <div className="text-xs text-ink-400 mb-1">Валовая маржа</div>
-          <div className="text-lg font-semibold text-ink-50">{snapshot.grossMarginPct.toFixed(1)}%</div>
-        </Card>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function MarginTile({ label, value, tooltip }: { label: string; value: number; tooltip: string }) {
+  return (
+    <div className="rounded-xl border border-ink-800 px-4 py-3">
+      <div className="flex items-center gap-1.5 text-xs text-ink-400 mb-1">
+        {label}
+        <InfoTooltip>{tooltip}</InfoTooltip>
       </div>
+      <div className={`text-lg font-semibold ${value >= 0 ? 'text-ink-50' : 'text-negative-500'}`}>{value.toFixed(1)}%</div>
     </div>
   )
 }

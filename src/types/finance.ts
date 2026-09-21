@@ -68,6 +68,8 @@ export interface FinancialSnapshot {
   variableCosts: number
   ebitda: number
   ebitdaMarginPct: number
+  ebit: number
+  ebitMarginPct: number
   netProfit: number
   netMarginPct: number
   contributionMarginPct: number
@@ -77,4 +79,8 @@ export interface FinancialSnapshot {
   cashFlow: number
   romiPct: number
   debtLoadPct: number
+  /** Долг/EBITDA в годовом выражении (месячные значения × 12). null — если EBITDA ≤ 0. */
+  debtToEbitda: number | null
+  /** Во сколько раз EBITDA периода покрывает обязательные платежи по долгу (тело + проценты) за тот же период. */
+  dscr: number | null
 }
