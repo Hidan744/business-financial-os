@@ -16,6 +16,7 @@ const SalesPage = lazy(() => import('@/pages/SalesPage').then((m) => ({ default:
 const ForecastPage = lazy(() => import('@/pages/ForecastPage').then((m) => ({ default: m.ForecastPage })))
 const AiCfoPage = lazy(() => import('@/pages/AiCfoPage').then((m) => ({ default: m.AiCfoPage })))
 const CrisisPage = lazy(() => import('@/pages/CrisisPage').then((m) => ({ default: m.CrisisPage })))
+const StressTestPage = lazy(() => import('@/pages/StressTestPage').then((m) => ({ default: m.StressTestPage })))
 const ReportPage = lazy(() => import('@/pages/ReportPage').then((m) => ({ default: m.ReportPage })))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
@@ -48,6 +49,7 @@ function App() {
             <Route path="forecast" element={<ForecastPage />} />
             <Route path="ai-cfo" element={<AiCfoPage />} />
             <Route path="crisis" element={<CrisisPage />} />
+            <Route path="stress-test" element={<StressTestPage />} />
             <Route path="report" element={<ReportPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

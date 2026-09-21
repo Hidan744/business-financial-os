@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Bot,
   AlertTriangle,
+  Zap,
   FileText,
   Settings,
   Sparkles,
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/app/forecast', label: 'Прогноз', icon: TrendingUp },
   { to: '/app/ai-cfo', label: 'AI CFO', icon: Bot },
   { to: '/app/crisis', label: 'Антикризис', icon: AlertTriangle },
+  { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },
   { to: '/app/report', label: 'Отчёт', icon: FileText },
   { to: '/app/settings', label: 'Настройки', icon: Settings },
 ]
