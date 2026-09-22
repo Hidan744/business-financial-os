@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { Bot, Send, User } from 'lucide-react'
+import { Bot, Send, Sparkles, User } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useDiagnostics } from '@/hooks/useDiagnostics'
 import { useBusinessStore } from '@/store/businessStore'
+import { useAuthStore } from '@/store/authStore'
 import { answerQuestion } from '@/lib/ai/cfoEngine'
+import { askAiCfo } from '@/lib/ai/cfoEngineV2'
+import { buildFinancialContext } from '@/lib/ai/buildFinancialContext'
 import { generateId } from '@/lib/id'
 import type { AiCfoMessage } from '@/types/ai'
 import { cn } from '@/lib/utils'
@@ -24,15 +28,25 @@ export function AiCfoPage() {
   const { inputs, snapshot } = useFinancials()
   const diagnostics = useDiagnostics()
   const profile = useBusinessStore((s) => s.profile)
+  const history = useBusinessStore((s) => s.history)
+  const balanceSheet = useBusinessStore((s) => s.balanceSheet)
+  const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
+  const forecastConfig = useBusinessStore((s) => s.forecastConfig)
+  const unitEconomics = useBusinessStore((s) => s.unitEconomics)
   const aiHistory = useBusinessStore((s) => s.aiHistory)
   const addAiMessage = useBusinessStore((s) => s.addAiMessage)
+  const authStatus = useAuthStore((s) => s.status)
+  const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
   const [draft, setDraft] = useState('')
+  const [thinking, setThinking] = useState(false)
 
-  if (!inputs || !snapshot || !diagnostics) return null
+  const llmAvailable = cloudEnabled && authStatus === 'authenticated'
+
+  if (!inputs || !snapshot || !diagnostics || !profile) return null
 
   async function handleSend(text: string) {
     const question = text.trim()
-    if (!question) return
+    if (!question || thinking) return
 
     const userMessage: AiCfoMessage = {
       id: generateId('msg'),
@@ -42,17 +56,60 @@ export function AiCfoPage() {
     }
     await addAiMessage(userMessage)
     setDraft('')
+    setThinking(true)
 
+    try {
+      if (llmAvailable) {
+        const context = buildFinancialContext({
+          profile: profile!,
+          inputs: inputs!,
+          snapshot: snapshot!,
+          diagnostics: diagnostics!,
+          history,
+          balanceSheet,
+          cashFlowInputs,
+          forecastConfig,
+          unitEconomics,
+        })
+        const priorTurns = [...aiHistory, userMessage]
+          .slice(-7, -1)
+          .map((m) => ({ role: m.role, text: m.content }))
+        const result = await askAiCfo(question, context, priorTurns)
+
+        if (result.answer) {
+          await addAiMessage({
+            id: generateId('msg'),
+            role: 'assistant',
+            createdAt: new Date().toISOString(),
+            content: result.answer,
+            fromLlm: true,
+          })
+          return
+        }
+
+        // LLM недоступна/ошиблась — тихий откат на rule-based, но с честной пометкой почему.
+        await sendRuleBasedAnswer(question, result.error)
+        return
+      }
+
+      await sendRuleBasedAnswer(question)
+    } finally {
+      setThinking(false)
+    }
+  }
+
+  async function sendRuleBasedAnswer(question: string, llmFallbackReason?: string) {
     const result = answerQuestion(question, inputs!, snapshot!, diagnostics!, profile?.employeesCount ?? 0)
-    const assistantMessage: AiCfoMessage = {
+    await addAiMessage({
       id: generateId('msg'),
       role: 'assistant',
       createdAt: new Date().toISOString(),
       content: result.answer?.shortAnswer ?? 'Не хватает данных для точного ответа.',
       structured: result.answer,
       missingData: result.missingData,
-    }
-    await addAiMessage(assistantMessage)
+      fromLlm: false,
+      llmFallbackReason,
+    })
   }
 
   return (
@@ -60,6 +117,16 @@ export function AiCfoPage() {
       <div>
         <h1 className="text-2xl font-semibold text-ink-50 flex items-center gap-2">
           <Bot className="size-6 text-brand-400" /> AI CFO
+          {llmAvailable && (
+            <span className="inline-flex items-center gap-1 text-xs font-normal text-brand-400 bg-brand-500/10 rounded-full px-2.5 py-1">
+              <Sparkles className="size-3" /> YandexGPT
+            </span>
+          )}
+          <InfoTooltip>
+            {llmAvailable
+              ? 'Отвечает через YandexGPT, но использует только реальные цифры вашего бизнеса — модель ничего не считает сама, только объясняет уже готовые расчёты. Если YandexGPT недоступна, автоматически переключается на базовый режим.'
+              : 'Базовый режим — распознаёт вопрос по ключевым словам и считает точный ответ формулами. Войдите в аккаунт, чтобы получить свободные ответы через YandexGPT на основе тех же данных.'}
+          </InfoTooltip>
         </h1>
         <p className="text-sm text-ink-500 mt-1">
           Отвечает только на основании ваших реальных данных и рассчитанных показателей.
@@ -80,6 +147,16 @@ export function AiCfoPage() {
         {aiHistory.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
+        {thinking && (
+          <div className="flex gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-400">
+              <Bot className="size-4" />
+            </div>
+            <Card className="px-4 py-2.5 max-w-xl">
+              <p className="text-sm text-ink-500">Думаю…</p>
+            </Card>
+          </div>
+        )}
       </div>
 
       <form
@@ -93,9 +170,10 @@ export function AiCfoPage() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Спросите о своих финансах…"
+          disabled={thinking}
           className="flex-1"
         />
-        <Button type="submit" size="icon" aria-label="Отправить">
+        <Button type="submit" size="icon" aria-label="Отправить" disabled={thinking}>
           <Send className="size-4" />
         </Button>
       </form>
@@ -122,6 +200,11 @@ function MessageBubble({ message }: { message: AiCfoMessage }) {
         </Card>
       ) : (
         <Card className="p-5 max-w-xl w-full">
+          {message.llmFallbackReason && (
+            <p className="text-xs text-warning-500 mb-3">
+              YandexGPT недоступна ({message.llmFallbackReason}) — ответ в базовом режиме.
+            </p>
+          )}
           {message.missingData ? (
             <div>
               <p className="text-sm font-medium text-warning-500 mb-2">Недостаточно данных для точного ответа</p>
@@ -140,7 +223,7 @@ function MessageBubble({ message }: { message: AiCfoMessage }) {
               <StructuredRow label="Что изменится" value={message.structured.whatChanges} />
             </div>
           ) : (
-            <p className="text-sm text-ink-300">{message.content}</p>
+            <p className="text-sm text-ink-300 whitespace-pre-wrap">{message.content}</p>
           )}
         </Card>
       )}
