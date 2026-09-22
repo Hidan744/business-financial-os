@@ -32,7 +32,7 @@ describe('calculateForecast', () => {
   })
 
   it('grows revenue month over month with positive growth rate', () => {
-    const points = calculateForecast(makeInputs(), { ...DEFAULT_FORECAST_CONFIG, monthlyGrowthRatePct: 5 })
+    const points = calculateForecast(makeInputs(), { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 5 })
     expect(points[11].revenue).toBeGreaterThan(points[0].revenue)
   })
 
@@ -43,12 +43,51 @@ describe('calculateForecast', () => {
       expect(Number.isFinite(point.expenses)).toBe(true)
       expect(Number.isFinite(point.netProfit)).toBe(true)
       expect(Number.isFinite(point.cashFlow)).toBe(true)
+      expect(Number.isFinite(point.cashBalance)).toBe(true)
     }
   })
 
   it('respects a custom number of months', () => {
     const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG, { months: 6 })
     expect(points).toHaveLength(6)
+  })
+
+  it('salesCountGrowthPct and avgCheckGrowthPct combine multiplicatively, not additively (each drives only its own factor)', () => {
+    // +5% sales count and +3% avg check per month -> combined revenue growth per month is
+    // (1.05 * 1.03 - 1) = 8.15%, not 5% and not 8% (naive sum) — this is now an honest,
+    // visible composition of two independent drivers, not a hidden double-count bug.
+    const base = makeInputs()
+    const baseRevenue = base.avgCheck * base.salesCount // 850 * 2824 = 2,400,400 (the model's actual revenue basis)
+    const points = calculateForecast(base, { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 5, avgCheckGrowthPct: 3 })
+    const month1Revenue = points[0].revenue
+    const expectedMonth1Revenue = base.avgCheck * 1.03 * (base.salesCount * 1.05)
+    expect(month1Revenue).toBeCloseTo(expectedMonth1Revenue, 2)
+    expect(month1Revenue).toBeCloseTo(baseRevenue * 1.05 * 1.03, 0)
+  })
+
+  it('salesCountGrowthPct alone does not silently get amplified by avg check drift', () => {
+    const base = makeInputs()
+    const baseRevenue = base.avgCheck * base.salesCount
+    const points = calculateForecast(base, { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 5, avgCheckGrowthPct: 0 })
+    // With avgCheckGrowthPct at 0, revenue growth should track salesCount growth exactly (5%/mo).
+    expect(points[0].revenue).toBeCloseTo(baseRevenue * 1.05, 0)
+  })
+
+  it('cashBalance is cumulative and starts from openingCash, not just the sum of monthly cash flow mislabeled as "ending cash"', () => {
+    const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG, { openingCash: 350000 })
+    const netCashFlowSum = points.reduce((s, p) => s + p.cashFlow, 0)
+    expect(points[points.length - 1].cashBalance).toBeCloseTo(350000 + netCashFlowSum, 2)
+    // cashBalance accumulates monotonically with cashFlow, point by point
+    let running = 350000
+    for (const p of points) {
+      running += p.cashFlow
+      expect(p.cashBalance).toBeCloseTo(running, 2)
+    }
+  })
+
+  it('defaults openingCash to 0 when not provided', () => {
+    const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG)
+    expect(points[0].cashBalance).toBeCloseTo(points[0].cashFlow, 2)
   })
 })
 

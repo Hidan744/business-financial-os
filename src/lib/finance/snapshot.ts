@@ -1,7 +1,7 @@
 import type { FinancialInputs, FinancialSnapshot } from '@/types/finance'
 import {
   calculateContributionMarginPct,
-  calculateDebtLoad,
+  calculateDebtServiceRatio,
   calculateDebtToEBITDA,
   calculateDSCR,
   calculateEBIT,
@@ -10,11 +10,29 @@ import {
   calculateEBITMargin,
   calculateGrossMargin,
   calculateGrossProfit,
+  calculateMarketingEfficiencyPct,
   calculateNetMargin,
   calculateNetProfit,
+  calculateROAS,
   calculateROMI,
 } from './formulas'
 import { calculateBreakEvenRevenue, calculateBreakEvenSales, calculateSafetyMarginPct } from './breakeven'
+
+export interface SnapshotContext {
+  /**
+   * Остаток долга на конец периода (кратко- + долгосрочный, из раздела «Баланс»).
+   * Если не передан — Долг/EBITDA возвращается как null, а не додумывается по платежам
+   * (платежи по кредиту с длинным сроком могут быть маленькими при большом остатке долга).
+   */
+  outstandingDebt?: number
+  /** CAPEX за период (покупка/ремонт оборудования и т.п., из Cash Flow → Инвестиционная деятельность). */
+  maintenanceCapex?: number
+  /**
+   * Изменение оборотного капитала за период (рост дебиторки + рост запасов − рост кредиторки).
+   * По умолчанию 0 — для точного расчёта нужна история баланса минимум за два периода.
+   */
+  changeInWorkingCapital?: number
+}
 
 /** Постоянные расходы = всё, кроме себестоимости (COGS — единственные переменные затраты в модели). */
 export function getFixedCosts(inputs: FinancialInputs): number {
@@ -34,7 +52,7 @@ export function getVariableCosts(inputs: FinancialInputs): number {
   return inputs.cogs
 }
 
-export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapshot {
+export function buildFinancialSnapshot(inputs: FinancialInputs, context: SnapshotContext = {}): FinancialSnapshot {
   const grossProfit = calculateGrossProfit(inputs.revenue, inputs.cogs)
   const grossMarginPct = calculateGrossMargin(grossProfit, inputs.revenue) ?? 0
 
@@ -59,10 +77,22 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
     inputs.cogs + fixedCosts + inputs.taxes + inputs.loanInterest + inputs.loanPayments
   const cashFlow = inputs.revenue - totalCashOut
 
-  const romiPct = calculateROMI(inputs.revenue, inputs.marketing) ?? 0
-  const debtLoadPct = calculateDebtLoad(inputs.loanPayments, inputs.revenue) ?? 0
-  const debtToEbitda = calculateDebtToEBITDA(inputs.loanPayments * 12, ebitda * 12)
-  const dscr = calculateDSCR(ebitda, inputs.loanPayments + inputs.loanInterest)
+  const marketingEfficiencyPct = calculateMarketingEfficiencyPct(inputs.revenue, inputs.marketing) ?? 0
+  const attributedRevenue = inputs.attributedRevenue ?? 0
+  const romiPct = calculateROMI(attributedRevenue, grossMarginPct, inputs.marketing)
+  const roas = calculateROAS(attributedRevenue, inputs.marketing)
+
+  const debtService = inputs.loanPayments + inputs.loanInterest
+  const debtServiceRatioPct = calculateDebtServiceRatio(debtService, inputs.revenue) ?? 0
+  const debtToEbitda =
+    context.outstandingDebt !== undefined ? calculateDebtToEBITDA(context.outstandingDebt, ebitda * 12) : null
+  const dscr = calculateDSCR(
+    ebitda,
+    debtService,
+    inputs.taxes,
+    context.maintenanceCapex ?? 0,
+    context.changeInWorkingCapital ?? 0,
+  )
 
   return {
     revenue: inputs.revenue,
@@ -82,8 +112,10 @@ export function buildFinancialSnapshot(inputs: FinancialInputs): FinancialSnapsh
     breakEvenSales,
     safetyMarginPct,
     cashFlow,
+    marketingEfficiencyPct,
     romiPct,
-    debtLoadPct,
+    roas,
+    debtServiceRatioPct,
     debtToEbitda,
     dscr,
   }

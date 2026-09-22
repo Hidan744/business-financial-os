@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { InfoTooltip } from '@/components/ui/tooltip'
-import { useFinancials } from '@/hooks/useFinancials'
+import { useFinancials, buildSnapshotContext } from '@/hooks/useFinancials'
+import { useBusinessStore } from '@/store/businessStore'
 import { buildAmortizationSchedule, splitFirstMonthPayment } from '@/lib/finance/loan'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
 import { formatCurrency, formatPercent } from '@/lib/utils'
@@ -13,9 +14,15 @@ const DEFAULT_LOAN_TERM_MONTHS = 12
 
 export function DebtsPage() {
   const { inputs, snapshot } = useFinancials()
+  const balanceSheet = useBusinessStore((s) => s.balanceSheet)
+  const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const [loanAmount, setLoanAmount] = useState(DEFAULT_LOAN_AMOUNT)
   const [loanRatePct, setLoanRatePct] = useState(DEFAULT_LOAN_RATE_PCT)
   const [loanTermMonths, setLoanTermMonths] = useState(DEFAULT_LOAN_TERM_MONTHS)
+
+  const outstandingDebt = balanceSheet
+    ? balanceSheet.currentLiabilities.shortTermDebt + balanceSheet.nonCurrentLiabilities.longTermDebt
+    : 0
 
   const schedule = useMemo(
     () => buildAmortizationSchedule(loanAmount, loanRatePct, loanTermMonths),
@@ -34,12 +41,16 @@ export function DebtsPage() {
 
   const afterSnapshot = useMemo(() => {
     if (!inputs || !firstMonth) return null
-    return buildFinancialSnapshot({
-      ...inputs,
-      loanInterest: inputs.loanInterest + firstMonth.interest,
-      loanPayments: inputs.loanPayments + firstMonth.principalRepayment,
-    })
-  }, [inputs, firstMonth])
+    const context = buildSnapshotContext(balanceSheet, cashFlowInputs)
+    return buildFinancialSnapshot(
+      {
+        ...inputs,
+        loanInterest: inputs.loanInterest + firstMonth.interest,
+        loanPayments: inputs.loanPayments + firstMonth.principalRepayment,
+      },
+      { ...context, outstandingDebt: (context.outstandingDebt ?? 0) + loanAmount },
+    )
+  }, [inputs, firstMonth, balanceSheet, cashFlowInputs, loanAmount])
 
   if (!inputs || !snapshot) return null
 
@@ -55,25 +66,30 @@ export function DebtsPage() {
           <CardTitle>Текущая долговая нагрузка</CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-4 gap-4">
+            <DebtTile
+              label="Остаток долга"
+              value={formatCurrency(outstandingDebt)}
+              tooltip="Кратко- + долгосрочный долг на конец периода, из раздела «Баланс» → «Обязательства». Заполните его там, если видите 0, но кредит есть."
+            />
             <DebtTile
               label="Долг / EBITDA"
               value={snapshot.debtToEbitda !== null ? `${snapshot.debtToEbitda.toFixed(2)}×` : '—'}
-              tooltip="Годовые платежи по кредитам (тело, ×12) к годовой EBITDA. Меньше 3× обычно считается безопасным уровнем. «—» — если EBITDA ≤ 0."
+              tooltip="Остаток долга (из «Баланса») к годовой EBITDA. Меньше 3× обычно считается безопасным уровнем. «—» — если остаток долга не указан в балансе или EBITDA ≤ 0."
               accent={
                 snapshot.debtToEbitda === null ? undefined : snapshot.debtToEbitda <= 3 ? 'positive' : snapshot.debtToEbitda <= 4 ? 'neutral' : 'negative'
               }
             />
             <DebtTile
-              label="Долг / Выручка"
-              value={formatPercent(snapshot.debtLoadPct)}
-              tooltip="Ежемесячный платёж по кредитам как доля выручки за тот же период."
-              accent={snapshot.debtLoadPct <= 15 ? 'positive' : snapshot.debtLoadPct <= 25 ? 'neutral' : 'negative'}
+              label="Debt Service / Выручка"
+              value={formatPercent(snapshot.debtServiceRatioPct)}
+              tooltip="Платежи по кредитам за период — тело + проценты — как доля выручки за тот же период."
+              accent={snapshot.debtServiceRatioPct <= 15 ? 'positive' : snapshot.debtServiceRatioPct <= 25 ? 'neutral' : 'negative'}
             />
             <DebtTile
               label="DSCR"
               value={snapshot.dscr !== null ? `${snapshot.dscr.toFixed(2)}×` : '—'}
-              tooltip="Во сколько раз EBITDA периода покрывает обязательные платежи по долгу (тело + проценты). Выше 1.2× — комфортный запас, ниже 1× — EBITDA не хватает даже на обслуживание долга. «—» — если платежей по долгу нет."
+              tooltip="Во сколько раз свободный денежный поток периода (EBITDA − налоги − CAPEX) покрывает обязательные платежи по долгу (тело + проценты). Выше 1.2× — комфортный запас, ниже 1× — денег не хватает даже на обслуживание долга. «—» — если платежей по долгу нет."
               accent={snapshot.dscr === null ? undefined : snapshot.dscr >= 1.5 ? 'positive' : snapshot.dscr >= 1.2 ? 'neutral' : 'negative'}
             />
           </div>
@@ -102,9 +118,15 @@ export function DebtsPage() {
           {afterSnapshot && (
             <div>
               <div className="text-sm text-ink-300 mb-2">Было → Стало (первый месяц с новым кредитом)</div>
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid sm:grid-cols-4 gap-3">
                 <ImpactTile label="Чистая прибыль" before={snapshot.netProfit} after={afterSnapshot.netProfit} />
                 <ImpactTile label="Cash Flow" before={snapshot.cashFlow} after={afterSnapshot.cashFlow} />
+                <ImpactTile
+                  label="Долг / EBITDA"
+                  before={snapshot.debtToEbitda}
+                  after={afterSnapshot.debtToEbitda}
+                  format={(v) => (v !== null ? `${v.toFixed(2)}×` : '—')}
+                />
                 <ImpactTile
                   label="DSCR"
                   before={snapshot.dscr}

@@ -51,7 +51,7 @@ export function buildDiagnosticFactors(
   const payrollSharePct = hasRevenue ? (inputs.payroll / inputs.revenue) * 100 : 100
   const marketingSharePct = hasRevenue ? (inputs.marketing / inputs.revenue) * 100 : 100
   const fixedCostsSharePct = hasRevenue ? (snapshot.fixedCosts / inputs.revenue) * 100 : 100
-  const debtLoadPct = hasRevenue ? snapshot.debtLoadPct : inputs.loanPayments > 0 ? 100 : 0
+  const debtLoadPct = hasRevenue ? snapshot.debtServiceRatioPct : inputs.loanPayments > 0 ? 100 : 0
 
   const factors: DiagnosticFactor[] = [
     {

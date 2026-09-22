@@ -51,8 +51,16 @@ export const STANDARD_SCENARIOS: Scenario[] = [
   },
 ]
 
+/**
+ * Два независимых драйвера выручки: рост количества продаж и рост среднего чека.
+ * Revenue = avgCheck × salesCount, поэтому их совместный эффект на выручку — это их
+ * произведение (composition), а не сумма — и ни один из них сам по себе не означает
+ * «рост выручки на X%». Раньше salesCountGrowthPct назывался monthlyGrowthRatePct и был
+ * подписан как «рост выручки», что вводило в заблуждение: при ненулевом avgCheckGrowthPct
+ * реальный рост выручки получался выше заданного (двойной рост).
+ */
 export interface ForecastConfig {
-  monthlyGrowthRatePct: number // рост выручки в % в месяц
+  salesCountGrowthPct: number // рост количества продаж в % в месяц
   seasonality: number[] // 12 коэффициентов, 1 = нейтрально
   marketingBudgetTrendPct: number // изменение рекламного бюджета в % в месяц
   avgCheckGrowthPct: number // рост среднего чека в % в месяц
@@ -60,7 +68,7 @@ export interface ForecastConfig {
 }
 
 export const DEFAULT_FORECAST_CONFIG: ForecastConfig = {
-  monthlyGrowthRatePct: 2,
+  salesCountGrowthPct: 2,
   seasonality: Array(12).fill(1),
   marketingBudgetTrendPct: 0,
   avgCheckGrowthPct: 0,
@@ -73,5 +81,8 @@ export interface MonthlyForecastPoint {
   revenue: number
   expenses: number
   netProfit: number
+  /** Чистый денежный поток ЗА месяц (не накопительно). */
   cashFlow: number
+  /** Накопительный остаток денег на конец месяца = openingCash + сумма cashFlow с начала прогноза. */
+  cashBalance: number
 }

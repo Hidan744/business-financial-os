@@ -42,6 +42,19 @@ export function FinancePage() {
           <PnLRow label="ФОТ" value={inputs.payroll} sign="-" editable onChange={(v) => updateFinancialInputs({ payroll: v })} />
           <PnLRow label="Аренда" value={inputs.rent} sign="-" editable onChange={(v) => updateFinancialInputs({ rent: v })} />
           <PnLRow label="Реклама" value={inputs.marketing} sign="-" editable onChange={(v) => updateFinancialInputs({ marketing: v })} />
+          <PnLRow
+            label="  из них — выручка, атрибутированная рекламе"
+            value={inputs.attributedRevenue ?? 0}
+            editable
+            onChange={(v) => updateFinancialInputs({ attributedRevenue: v })}
+            extra={
+              <InfoTooltip>
+                Опционально: выручка, которую вы можете связать именно с рекламными каналами (например, из данных
+                рекламного кабинета или промокодов). Без этого поля показатель ROMI посчитать нельзя — система не
+                отличает продажи из рекламы от остальных сама.
+              </InfoTooltip>
+            }
+          />
           <PnLRow label="Логистика" value={inputs.logistics} sign="-" editable onChange={(v) => updateFinancialInputs({ logistics: v })} />
           <PnLRow
             label="Коммунальные расходы"

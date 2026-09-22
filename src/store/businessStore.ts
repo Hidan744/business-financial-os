@@ -98,6 +98,20 @@ function emptyCashFlow(businessId: string, period: string): CashFlowInputs {
   }
 }
 
+/**
+ * salesCountGrowthPct заменил monthlyGrowthRatePct (тот же смысл — рост количества продаж,
+ * честное название). Записи, сохранённые до переименования, читают старое поле как запасной вариант.
+ */
+function normalizeForecastConfig(config: ForecastConfig | undefined): ForecastConfig {
+  const legacy = config as (Partial<ForecastConfig> & { monthlyGrowthRatePct?: number }) | undefined
+  if (!legacy) return DEFAULT_FORECAST_CONFIG
+  return {
+    ...DEFAULT_FORECAST_CONFIG,
+    ...legacy,
+    salesCountGrowthPct: legacy.salesCountGrowthPct ?? legacy.monthlyGrowthRatePct ?? DEFAULT_FORECAST_CONFIG.salesCountGrowthPct,
+  }
+}
+
 function deriveActiveFields(businesses: Record<string, BusinessState>, activeBusinessId: string | null) {
   const active = activeBusinessId ? businesses[activeBusinessId] : undefined
   return {
@@ -105,7 +119,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     financialInputs: active?.financialInputs ?? null,
     cashFlowInputs: active?.cashFlowInputs ?? null,
     scenarios: active?.scenarios ?? STANDARD_SCENARIOS,
-    forecastConfig: active?.forecastConfig ?? DEFAULT_FORECAST_CONFIG,
+    forecastConfig: normalizeForecastConfig(active?.forecastConfig),
     aiHistory: active?.aiHistory ?? [],
     // ?? [] / ?? emptyBalanceSheet(...) — защита от записей, сохранённых до появления
     // истории/целей/баланса (старая форма BusinessState).
@@ -144,6 +158,7 @@ async function mutateActiveBusiness(
   const current = businesses[activeBusinessId]
   const normalized: BusinessState = {
     ...current,
+    forecastConfig: normalizeForecastConfig(current.forecastConfig),
     history: current.history ?? [],
     targets: current.targets ?? [],
     balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs.period),

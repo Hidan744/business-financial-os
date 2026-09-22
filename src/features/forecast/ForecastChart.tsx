@@ -24,7 +24,8 @@ export function ForecastChart({ points }: { points: MonthlyForecastPoint[] }) {
         <Line type="monotone" dataKey="revenue" name="Выручка" stroke={CATEGORICAL.slot1} strokeWidth={2} dot={false} />
         <Line type="monotone" dataKey="expenses" name="Расходы" stroke={CATEGORICAL.slot2} strokeWidth={2} dot={false} />
         <Line type="monotone" dataKey="netProfit" name="Прибыль" stroke={CATEGORICAL.slot3} strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="cashFlow" name="Cash Flow" stroke={CATEGORICAL.slot4} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="cashFlow" name="Cash Flow / мес" stroke={CATEGORICAL.slot4} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="cashBalance" name="Остаток денег" stroke={CATEGORICAL.slot5} strokeWidth={2} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   )

@@ -32,10 +32,10 @@ describe('getFixedCosts', () => {
 })
 
 describe('buildFinancialSnapshot — Urban Coffee demo data', () => {
-  it('computes a consistent snapshot without NaN/Infinity', () => {
+  it('computes a consistent snapshot without NaN/Infinity (null is allowed — it is the honest "unknown", never NaN)', () => {
     const snapshot = buildFinancialSnapshot(makeInputs())
     for (const value of Object.values(snapshot)) {
-      expect(Number.isFinite(value)).toBe(true)
+      expect(value === null || Number.isFinite(value)).toBe(true)
     }
     expect(snapshot.grossProfit).toBe(2400000 - 720000)
     expect(snapshot.netProfit).toBeGreaterThan(0)
@@ -61,10 +61,22 @@ describe('buildFinancialSnapshot — edge cases', () => {
     expect(snapshot.breakEvenSales).toBe(0)
   })
 
-  it('debtToEbitda is null (not NaN/Infinity) when EBITDA is zero or negative', () => {
-    const snapshot = buildFinancialSnapshot(makeInputs({ revenue: 100000, payroll: 900000 }))
+  it('debtToEbitda is null when no outstanding-debt context is given, even with healthy positive EBITDA', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs())
+    expect(snapshot.ebitda).toBeGreaterThan(0)
+    expect(snapshot.debtToEbitda).toBeNull()
+  })
+
+  it('debtToEbitda is null (not NaN/Infinity) when EBITDA is zero or negative, even with outstanding debt supplied', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs({ revenue: 100000, payroll: 900000 }), { outstandingDebt: 1000000 })
     expect(snapshot.ebitda).toBeLessThan(0)
     expect(snapshot.debtToEbitda).toBeNull()
+  })
+
+  it('debtToEbitda computes the real ratio once outstanding debt is supplied via context', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs(), { outstandingDebt: 500000 })
+    // ebitda = 610000/mo -> annual 7,320,000; 500,000 / 7,320,000
+    expect(snapshot.debtToEbitda).toBeCloseTo(500000 / (snapshot.ebitda * 12), 5)
   })
 
   it('dscr is null (not NaN/Infinity) when there is no debt service', () => {
@@ -76,5 +88,34 @@ describe('buildFinancialSnapshot — edge cases', () => {
     const snapshot = buildFinancialSnapshot(makeInputs())
     expect(snapshot.dscr).not.toBeNull()
     expect(Number.isFinite(snapshot.dscr)).toBe(true)
+  })
+
+  it('dscr accounts for taxes even without maintenanceCapex context (more conservative than raw EBITDA/debtService)', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs())
+    const debtService = 50000 // loanPayments
+    const naiveDscr = snapshot.ebitda / debtService
+    expect(snapshot.dscr).toBeLessThan(naiveDscr)
+  })
+
+  it('dscr drops further when maintenanceCapex context is supplied', () => {
+    const withoutCapex = buildFinancialSnapshot(makeInputs())
+    const withCapex = buildFinancialSnapshot(makeInputs(), { maintenanceCapex: 100000 })
+    expect(withCapex.dscr).toBeLessThan(withoutCapex.dscr as number)
+  })
+
+  it('romiPct/roas are null without attributedRevenue, and computed once it is set', () => {
+    const withoutAttribution = buildFinancialSnapshot(makeInputs())
+    expect(withoutAttribution.romiPct).toBeNull()
+    expect(withoutAttribution.roas).toBeNull()
+
+    const withAttribution = buildFinancialSnapshot(makeInputs({ attributedRevenue: 1500000 }))
+    expect(withAttribution.romiPct).not.toBeNull()
+    expect(withAttribution.roas).toBe(1500000 / 150000)
+  })
+
+  it('marketingEfficiencyPct (the old mislabeled formula) is always computable and clearly separate from romiPct', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs())
+    expect(Number.isFinite(snapshot.marketingEfficiencyPct)).toBe(true)
+    expect(snapshot.romiPct).toBeNull()
   })
 })

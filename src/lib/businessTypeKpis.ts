@@ -7,7 +7,7 @@ import type { BusinessType } from '@/types/business'
 export const BUSINESS_TYPE_KPI_PRIORITIES: Record<BusinessType, string[]> = {
   cafe: ['revenue', 'grossMarginPct', 'costPerSale'],
   retail: ['grossMarginPct', 'ebitda', 'safetyMarginPct'],
-  ecommerce: ['romiPct', 'costPerSale', 'netMarginPct'],
+  ecommerce: ['marketingEfficiencyPct', 'costPerSale', 'netMarginPct'],
   production: ['grossMarginPct', 'debtToEbitda', 'ebitdaMarginPct'],
   agency: ['revenuePerEmployee', 'netMarginPct', 'ebitdaMarginPct'],
   services: ['revenuePerEmployee', 'netMarginPct', 'safetyMarginPct'],

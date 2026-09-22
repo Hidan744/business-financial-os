@@ -23,6 +23,13 @@ export interface FinancialInputs {
   loanPayments: number // погашение тела кредита (не влияет на прибыль, но влияет на cash flow)
   avgCheck: number
   salesCount: number
+  /**
+   * Выручка, атрибутированная маркетингу (например, из рекламного кабинета) — опционально.
+   * Без неё настоящий ROMI/ROAS посчитать нельзя (не с чем сравнивать расходы на рекламу),
+   * и снэпшот вернёт null вместо гадания по всей выручке компании. Опционально — старые
+   * сохранённые записи не имеют этого поля, поэтому читать нужно как `?? 0`.
+   */
+  attributedRevenue?: number
 }
 
 export interface CashFlowInputs {
@@ -105,10 +112,16 @@ export interface FinancialSnapshot {
   breakEvenSales: number
   safetyMarginPct: number
   cashFlow: number
-  romiPct: number
-  debtLoadPct: number
-  /** Долг/EBITDA в годовом выражении (месячные значения × 12). null — если EBITDA ≤ 0. */
+  /** НЕ настоящий ROMI — грубая оценка (вся выручка − реклама) / реклама. См. calculateMarketingEfficiencyPct. */
+  marketingEfficiencyPct: number
+  /** Настоящий ROMI. null — если не задана выручка, атрибутированная маркетингу (attributedRevenue). */
+  romiPct: number | null
+  /** ROAS = атрибутированная выручка / расходы на маркетинг. null — как и romiPct, без атрибуции. */
+  roas: number | null
+  /** Обязательные платежи по долгу (тело + проценты) как доля выручки за период. */
+  debtServiceRatioPct: number
+  /** Остаток долга / годовая EBITDA. null — если остаток долга неизвестен (нет данных баланса) или EBITDA ≤ 0. */
   debtToEbitda: number | null
-  /** Во сколько раз EBITDA периода покрывает обязательные платежи по долгу (тело + проценты) за тот же период. */
+  /** Во сколько раз свободный денежный поток периода покрывает платежи по долгу (тело + проценты). */
   dscr: number | null
 }

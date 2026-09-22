@@ -126,17 +126,26 @@ export function DashboardPage() {
           highlighted={isKey('cashFlow')}
         />
         <KpiCard
-          label="ROMI"
-          value={formatPercent(snapshot.romiPct)}
-          tooltip="Приблизительный возврат инвестиций в маркетинг: (выручка − расходы на рекламу) / расходы на рекламу. Оценка по всей выручке, так как продажи по рекламным каналам отдельно не учитываются."
-          accent={snapshot.romiPct >= 0 ? 'positive' : 'negative'}
-          highlighted={isKey('romiPct')}
+          label="Marketing Efficiency"
+          value={formatPercent(snapshot.marketingEfficiencyPct)}
+          tooltip="НЕ настоящий ROMI. Грубая оценка (вся выручка − расходы на рекламу) / расходы на рекламу, по всей выручке компании — система не различает, какие продажи пришли именно из рекламы. Чтобы увидеть настоящий ROMI, укажите выручку, атрибутированную маркетингу, в разделе «Финансы»."
+          accent={snapshot.marketingEfficiencyPct >= 0 ? 'positive' : 'negative'}
+          highlighted={isKey('marketingEfficiencyPct')}
         />
+        {snapshot.romiPct !== null && (
+          <KpiCard
+            label="ROMI"
+            value={formatPercent(snapshot.romiPct)}
+            tooltip="Настоящий ROMI: (атрибутированная маркетингу выручка × валовая маржа − расходы на маркетинг) / расходы на маркетинг."
+            accent={snapshot.romiPct >= 0 ? 'positive' : 'negative'}
+            highlighted={isKey('romiPct')}
+          />
+        )}
         {snapshot.debtToEbitda !== null && (
           <KpiCard
             label="Долг / EBITDA"
             value={`${snapshot.debtToEbitda.toFixed(2)}×`}
-            tooltip="Годовые платежи по кредитам к годовой EBITDA. Меньше 3× обычно считается безопасным уровнем."
+            tooltip="Остаток долга (кратко- + долгосрочный, из раздела «Баланс») к годовой EBITDA. Меньше 3× обычно считается безопасным уровнем. «—», если в балансе не указан остаток долга."
             accent={snapshot.debtToEbitda <= 3 ? 'positive' : 'negative'}
             highlighted={isKey('debtToEbitda')}
           />

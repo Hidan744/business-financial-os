@@ -63,13 +63,13 @@ export function HistoryImportPage() {
   const growthRatePct = calculateAverageMonthlyGrowthRatePct(sortedHistory)
   const clampedRate = growthRatePct === null ? null : Math.max(-10, Math.min(15, growthRatePct))
   const forecastPoints =
-    clampedRate === null ? [] : calculateForecast(inputs, { ...forecastConfig, monthlyGrowthRatePct: clampedRate }, { currentEmployeesCount: profile.employeesCount || 1 })
+    clampedRate === null ? [] : calculateForecast(inputs, { ...forecastConfig, salesCountGrowthPct: clampedRate }, { currentEmployeesCount: profile.employeesCount || 1 })
   const forecastRevenue = forecastPoints.reduce((s, p) => s + p.revenue, 0)
   const forecastProfit = forecastPoints.reduce((s, p) => s + p.netProfit, 0)
 
   function applyGrowthRateToForecast() {
     if (clampedRate === null) return
-    setForecastConfig({ ...forecastConfig, monthlyGrowthRatePct: Math.round(clampedRate * 10) / 10 })
+    setForecastConfig({ ...forecastConfig, salesCountGrowthPct: Math.round(clampedRate * 10) / 10 })
     navigate('/app/forecast')
   }
 

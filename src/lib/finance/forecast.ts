@@ -12,6 +12,8 @@ export interface ForecastOptions {
   startMonthIndex?: number
   /** Текущее число сотрудников — нужно, чтобы распределить рост ФОТ на доп. штат равномерно. */
   currentEmployeesCount?: number
+  /** Остаток денег на начало прогноза (из Баланса, currentAssets.cash). По умолчанию 0. */
+  openingCash?: number
 }
 
 /**
@@ -35,9 +37,15 @@ export function calculateForecast(
   const months = options.months ?? 12
   const startMonthIndex = options.startMonthIndex ?? new Date().getMonth()
   const currentEmployeesCount = Math.max(1, options.currentEmployeesCount ?? 1)
+  let runningCash = options.openingCash ?? 0
 
   const points: MonthlyForecastPoint[] = []
-  const growthRate = config.monthlyGrowthRatePct / 100
+  // Два НЕЗАВИСИМЫХ драйвера выручки — salesCountGrowthPct двигает только количество продаж,
+  // avgCheckGrowthPct только средний чек. Revenue = avgCheck × salesCount, поэтому их совместный
+  // эффект на выручку — произведение (1+a)×(1+b), а не сумма. Раньше поле называлось
+  // monthlyGrowthRatePct и подписывалось как «рост выручки», что вводило в заблуждение: при
+  // ненулевом avgCheckGrowthPct фактический рост выручки оказывался выше заданного.
+  const salesCountGrowthRate = config.salesCountGrowthPct / 100
   const marketingTrend = config.marketingBudgetTrendPct / 100
   const checkGrowth = config.avgCheckGrowthPct / 100
   const costPerEmployee = base.payroll / currentEmployeesCount
@@ -46,7 +54,7 @@ export function calculateForecast(
   for (let i = 0; i < months; i++) {
     const seasonIdx = (startMonthIndex + i) % 12
     const seasonality = config.seasonality[seasonIdx] ?? 1
-    const growthFactor = Math.pow(1 + growthRate, i + 1)
+    const growthFactor = Math.pow(1 + salesCountGrowthRate, i + 1)
     const avgCheck = base.avgCheck * Math.pow(1 + checkGrowth, i + 1)
     const salesCount = base.salesCount * growthFactor * seasonality
     const revenue = avgCheck * salesCount
@@ -68,6 +76,7 @@ export function calculateForecast(
     const snapshot = buildFinancialSnapshot(inputs)
     const fixedCosts = getFixedCosts(inputs)
     const expenses = inputs.cogs + fixedCosts + inputs.taxes + inputs.loanInterest
+    runningCash += snapshot.cashFlow
 
     points.push({
       monthIndex: i,
@@ -76,6 +85,7 @@ export function calculateForecast(
       expenses,
       netProfit: snapshot.netProfit,
       cashFlow: snapshot.cashFlow,
+      cashBalance: runningCash,
     })
   }
 

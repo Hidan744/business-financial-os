@@ -97,7 +97,7 @@ export function createUrbanCoffeeDemo(): BusinessState {
     scenarios: STANDARD_SCENARIOS,
     forecastConfig: {
       ...DEFAULT_FORECAST_CONFIG,
-      monthlyGrowthRatePct: 1.5,
+      salesCountGrowthPct: 1.5,
       seasonality: [0.9, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.1, 1, 0.95, 0.95, 1.2],
     },
     aiHistory: [],
