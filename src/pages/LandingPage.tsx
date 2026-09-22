@@ -138,7 +138,7 @@ export function LandingPage() {
       <section className="max-w-3xl mx-auto px-4 pb-28 text-center">
         <h2 className="text-2xl lg:text-3xl font-semibold mb-4">Готовы понять свой бизнес за 3 минуты?</h2>
         <p className="text-ink-400 mb-8">
-          Пройдите короткий онбординг или откройте демо-бизнес Urban Coffee, чтобы сразу увидеть,
+          Пройдите короткий онбординг или откройте демо-бизнес Nord Wear, чтобы сразу увидеть,
           как работает система.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -148,7 +148,7 @@ export function LandingPage() {
             </Link>
           </Button>
           <Button size="lg" variant="secondary" onClick={handleDemo}>
-            Открыть демо Urban Coffee
+            Открыть демо Nord Wear
           </Button>
         </div>
       </section>

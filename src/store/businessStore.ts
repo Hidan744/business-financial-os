@@ -15,7 +15,7 @@ import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
 import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
 import { getBusinessRole, getMyAllowedDomains, supabaseFinanceRepository } from '@/lib/storage/supabaseFinanceRepository'
-import { createUrbanCoffeeDemo } from '@/lib/demo/urbanCoffee'
+import { createDemoBusiness } from '@/lib/demo/demoBusiness'
 import { emptyBalanceSheet } from '@/lib/finance/balanceSheet'
 import { generateId } from '@/lib/id'
 import type { BusinessRole, TeamDomain } from '@/types/teamAccess'
@@ -255,7 +255,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   },
 
   loadDemo: async () => {
-    const demo = createUrbanCoffeeDemo()
+    const demo = createDemoBusiness()
     const demoId = demo.profile.id
     const businesses = { ...get().businesses, [demoId]: demo }
     set({
