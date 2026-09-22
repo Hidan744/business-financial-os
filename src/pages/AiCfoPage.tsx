@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bot, Send, Sparkles, User } from 'lucide-react'
+import { Bot, Construction, Send, User } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,7 +40,12 @@ export function AiCfoPage() {
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
 
-  const llmAvailable = cloudEnabled && authStatus === 'authenticated'
+  // Интеграция с YandexGPT (buildFinancialContext.ts, cfoEngineV2.ts, supabase/functions/ai-cfo)
+  // полностью готова и протестирована, но пока не задеплоена (нужны Yandex Cloud API-ключ и
+  // Supabase secrets на стороне пользователя) — временно выключено флагом, чтобы не дёргать
+  // недоступную функцию зря. Когда задеплоят — вернуть `cloudEnabled && authStatus === 'authenticated'`.
+  const AI_CFO_LLM_ENABLED = false
+  const llmAvailable = AI_CFO_LLM_ENABLED && cloudEnabled && authStatus === 'authenticated'
 
   if (!inputs || !snapshot || !diagnostics || !profile) return null
 
@@ -117,15 +122,15 @@ export function AiCfoPage() {
       <div>
         <h1 className="text-2xl font-semibold text-ink-50 flex items-center gap-2">
           <Bot className="size-6 text-brand-400" /> AI CFO
-          {llmAvailable && (
-            <span className="inline-flex items-center gap-1 text-xs font-normal text-brand-400 bg-brand-500/10 rounded-full px-2.5 py-1">
-              <Sparkles className="size-3" /> YandexGPT
+          {!llmAvailable && (
+            <span className="inline-flex items-center gap-1 text-xs font-normal text-ink-400 bg-ink-800 rounded-full px-2.5 py-1">
+              <Construction className="size-3" /> Свободные ответы — в разработке
             </span>
           )}
           <InfoTooltip>
             {llmAvailable
               ? 'Отвечает через YandexGPT, но использует только реальные цифры вашего бизнеса — модель ничего не считает сама, только объясняет уже готовые расчёты. Если YandexGPT недоступна, автоматически переключается на базовый режим.'
-              : 'Базовый режим — распознаёт вопрос по ключевым словам и считает точный ответ формулами. Войдите в аккаунт, чтобы получить свободные ответы через YandexGPT на основе тех же данных.'}
+              : 'Сейчас — базовый режим: распознаёт вопрос по ключевым словам и считает точный ответ формулами. Свободные ответы на любую формулировку вопроса (через YandexGPT) — в разработке, скоро подключим.'}
           </InfoTooltip>
         </h1>
         <p className="text-sm text-ink-500 mt-1">
