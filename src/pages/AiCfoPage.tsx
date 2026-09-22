@@ -138,6 +138,16 @@ export function AiCfoPage() {
         </p>
       </div>
 
+      {!llmAvailable && (
+        <div className="rounded-xl border border-ink-800 px-4 py-3 text-xs text-ink-500 flex items-start gap-1.5">
+          <Construction className="size-3.5 shrink-0 mt-0.5 text-ink-400" />
+          <span>
+            AI CFO пока в разработке: свободные ответы через YandexGPT ещё не подключены. Сейчас работает
+            базовый режим — ответы по ключевым словам вопроса, посчитанные точными формулами по вашим данным.
+          </span>
+        </div>
+      )}
+
       {aiHistory.length === 0 && (
         <div className="flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
