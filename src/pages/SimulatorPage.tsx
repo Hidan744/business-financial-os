@@ -11,9 +11,11 @@ import { useBusinessStore } from '@/store/businessStore'
 import { calculateScenario } from '@/lib/finance/scenario'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
 import { splitFirstMonthPayment } from '@/lib/finance/loan'
+import { calculateForecast } from '@/lib/finance/forecast'
 import type { ScenarioMultipliers } from '@/types/scenario'
 import { DEFAULT_MULTIPLIERS, STANDARD_SCENARIOS } from '@/types/scenario'
 import { formatCurrency } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/tooltip'
 
 type PctState = Record<Exclude<keyof ScenarioMultipliers, 'revenue'>, number>
 
@@ -58,6 +60,7 @@ const DEFAULT_LOAN_TERM_MONTHS = 12
 export function SimulatorPage() {
   const { inputs } = useFinancials()
   const profile = useBusinessStore((s) => s.profile)
+  const forecastConfig = useBusinessStore((s) => s.forecastConfig)
   const [pct, setPct] = useState<PctState>(ZERO_PCT)
   const [loanEnabled, setLoanEnabled] = useState(false)
   const [loanAmount, setLoanAmount] = useState(DEFAULT_LOAN_AMOUNT)
@@ -66,20 +69,43 @@ export function SimulatorPage() {
 
   const loanSplit = loanEnabled ? splitFirstMonthPayment(loanAmount, loanRatePct, loanTermMonths) : null
 
-  const comparison = useMemo(() => {
+  const scenarioAfterInputs = useMemo(() => {
     if (!inputs) return null
-    const before = buildFinancialSnapshot(inputs)
     const scenarioInputs = calculateScenario(inputs, toMultipliers(pct))
-    const withLoan = loanSplit
+    return loanSplit
       ? {
           ...scenarioInputs,
           loanInterest: scenarioInputs.loanInterest + loanSplit.interest,
           loanPayments: scenarioInputs.loanPayments + loanSplit.principalRepayment,
         }
       : scenarioInputs
-    const after = buildFinancialSnapshot(withLoan)
-    return { before, after }
   }, [inputs, pct, loanSplit])
+
+  const comparison = useMemo(() => {
+    if (!inputs || !scenarioAfterInputs) return null
+    const before = buildFinancialSnapshot(inputs)
+    const after = buildFinancialSnapshot(scenarioAfterInputs)
+    return { before, after }
+  }, [inputs, scenarioAfterInputs])
+
+  // Влияние на 12 месяцев: та же модель роста (forecastConfig из раздела «Прогноз»), но с новой
+  // "точкой отсчёта" — что если изменённые параметры станут новой нормой, а не разовым эффектом.
+  const yearImpact = useMemo(() => {
+    if (!inputs || !scenarioAfterInputs) return null
+    const currentEmployeesCount = profile?.employeesCount ?? 1
+    const beforePoints = calculateForecast(inputs, forecastConfig, { currentEmployeesCount })
+    const afterPoints = calculateForecast(scenarioAfterInputs, forecastConfig, { currentEmployeesCount })
+    const sum = (points: typeof beforePoints, key: 'revenue' | 'netProfit' | 'cashFlow') =>
+      points.reduce((s, p) => s + p[key], 0)
+    return {
+      revenue: { before: sum(beforePoints, 'revenue'), after: sum(afterPoints, 'revenue') },
+      netProfit: { before: sum(beforePoints, 'netProfit'), after: sum(afterPoints, 'netProfit') },
+      cashFlow: { before: sum(beforePoints, 'cashFlow'), after: sum(afterPoints, 'cashFlow') },
+    }
+  }, [inputs, scenarioAfterInputs, forecastConfig, profile])
+
+  const hasPriceIncrease = pct.avgCheck > 0
+  const hasVolumeChange = pct.salesCount !== 0
 
   const canAfford = comparison
     ? comparison.after.netProfit >= 0 &&
@@ -219,6 +245,34 @@ export function SimulatorPage() {
         )}
       </Card>
 
+      {yearImpact && (pct.avgCheck !== 0 || pct.salesCount !== 0 || pct.cogs !== 0 || pct.marketing !== 0 || pct.payroll !== 0 || pct.rent !== 0 || pct.taxes !== 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              Влияние на 12 месяцев
+              <InfoTooltip>
+                Что изменится за 12 месяцев, если изменённые параметры станут новой нормой (при том же темпе роста,
+                что настроен в разделе «Прогноз»), а не разовым эффектом одного месяца.
+              </InfoTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 space-y-3">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <YearImpactTile label="Выручка" before={yearImpact.revenue.before} after={yearImpact.revenue.after} />
+              <YearImpactTile label="Чистая прибыль" before={yearImpact.netProfit.before} after={yearImpact.netProfit.after} />
+              <YearImpactTile label="Cash Flow" before={yearImpact.cashFlow.before} after={yearImpact.cashFlow.after} />
+            </div>
+            {hasPriceIncrease && !hasVolumeChange && (
+              <p className="text-xs text-warning-500">
+                Риск: расчёт предполагает, что количество продаж не изменится при росте цены. В реальности часть
+                клиентов может уйти — если ожидаете отток, задайте отрицательный «Количество продаж» рядом, чтобы
+                учесть его в сравнении.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Сравнение на графике</CardTitle>
@@ -253,6 +307,23 @@ export function SimulatorPage() {
       </Card>
 
       <p className="text-xs text-ink-600">Компания: {profile?.name}</p>
+    </div>
+  )
+}
+
+function YearImpactTile({ label, before, after }: { label: string; before: number; after: number }) {
+  const delta = after - before
+  return (
+    <div className="rounded-xl border border-ink-800 px-4 py-3">
+      <div className="text-xs text-ink-400 mb-1">{label}</div>
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <span className="text-sm text-ink-500 line-through">{formatCurrency(before)}</span>
+        <span className="text-lg font-semibold text-ink-50">{formatCurrency(after)}</span>
+        <span className={`text-xs ${delta >= 0 ? 'text-positive-500' : 'text-negative-500'}`}>
+          ({delta >= 0 ? '+' : ''}
+          {formatCurrency(delta)})
+        </span>
+      </div>
     </div>
   )
 }

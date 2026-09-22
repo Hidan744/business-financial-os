@@ -93,3 +93,27 @@ export function calculateWorkingCapitalMetrics(
 
   return { dso, dpo, dio, cashConversionCycleDays }
 }
+
+/**
+ * Дополнительный оборотный капитал, который потребует рост бизнеса — при условии, что
+ * оборачиваемость (DSO/DIO/DPO) останется на текущем уровне. Рост выручки без роста
+ * оборотного капитала невозможен: больше дебиторки зависает в неоплаченных счетах,
+ * больше денег заморожено в запасах — частично компенсируется ростом кредиторки.
+ * null — если текущая оборачиваемость не определена (нет данных баланса или revenue/cogs = 0).
+ */
+export function calculateIncrementalWorkingCapital(
+  currentRevenue: number,
+  currentCogs: number,
+  projectedRevenue: number,
+  projectedCogs: number,
+  metrics: WorkingCapitalMetrics,
+  daysInPeriod = 30,
+): number | null {
+  if (metrics.dso === null || metrics.dio === null || metrics.dpo === null) return null
+  const revenueDelta = projectedRevenue - currentRevenue
+  const cogsDelta = projectedCogs - currentCogs
+  const additionalReceivables = (revenueDelta / daysInPeriod) * metrics.dso
+  const additionalInventory = (cogsDelta / daysInPeriod) * metrics.dio
+  const additionalPayables = (cogsDelta / daysInPeriod) * metrics.dpo
+  return additionalReceivables + additionalInventory - additionalPayables
+}

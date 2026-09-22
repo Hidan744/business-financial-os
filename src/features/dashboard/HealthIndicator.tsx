@@ -10,7 +10,26 @@ const STATUS_STYLES = {
   critical: { color: 'text-negative-500', bg: 'bg-negative-500/10', border: 'border-negative-500/30', Icon: XCircle },
 } as const
 
-export function HealthIndicator({ diagnostics }: { diagnostics: DiagnosticResult }) {
+export interface HealthHeadlineMetrics {
+  cashFlow: number
+  safetyMarginPct: number | null
+  /** null запаса хода значит "не убывает" (cash flow неотрицательный), а не "нет данных". */
+  runwayMonths: number | null
+  dscr: number | null
+  debtToEbitda: number | null
+}
+
+/**
+ * Владелец бизнеса лучше понимает конкретные метрики (запас хода, DSCR), чем абстрактный
+ * "индекс здоровья 74" — числовой score оставлен, но вторичным, мелким текстом.
+ */
+export function HealthIndicator({
+  diagnostics,
+  headline,
+}: {
+  diagnostics: DiagnosticResult
+  headline?: HealthHeadlineMetrics
+}) {
   const style = STATUS_STYLES[diagnostics.healthStatus]
   const { Icon } = style
 
@@ -21,17 +40,42 @@ export function HealthIndicator({ diagnostics }: { diagnostics: DiagnosticResult
         <span className="text-xs text-ink-500">Обновлено только что</span>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex items-center gap-3 mb-2">
           <div className={cn('flex size-10 items-center justify-center rounded-xl', style.bg)}>
             <Icon className={cn('size-5', style.color)} />
           </div>
-          <div>
-            <div className={cn('text-lg font-semibold', style.color)}>
-              {HEALTH_STATUS_LABELS[diagnostics.healthStatus]}
-            </div>
-            <div className="text-xs text-ink-500">Индекс здоровья: {diagnostics.healthScore}/100</div>
+          <div className={cn('text-lg font-semibold', style.color)}>
+            {HEALTH_STATUS_LABELS[diagnostics.healthStatus]}
           </div>
         </div>
+
+        {headline && (
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-400 mb-1">
+            <span>
+              Cash runway: <span className="text-ink-200 font-medium">{headline.runwayMonths !== null ? `${headline.runwayMonths.toFixed(1)} мес.` : 'не убывает'}</span>
+            </span>
+            {headline.safetyMarginPct !== null && (
+              <span>
+                Margin of safety: <span className="text-ink-200 font-medium">{formatPercent(headline.safetyMarginPct)}</span>
+              </span>
+            )}
+            {headline.dscr !== null && (
+              <span>
+                DSCR: <span className="text-ink-200 font-medium">{headline.dscr.toFixed(2)}×</span>
+              </span>
+            )}
+            <span>
+              Cash flow: <span className="text-ink-200 font-medium">{headline.cashFlow >= 0 ? '+' : ''}{formatCurrency(headline.cashFlow)}</span>
+            </span>
+            {headline.debtToEbitda !== null && (
+              <span>
+                Долг/EBITDA: <span className="text-ink-200 font-medium">{headline.debtToEbitda.toFixed(2)}×</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="text-xs text-ink-600 mb-5">Индекс здоровья: {diagnostics.healthScore}/100</div>
 
         <div className="space-y-2.5">
           {diagnostics.factors.map((f) => {

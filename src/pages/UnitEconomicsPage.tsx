@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
-import { calculateApproxCostPerSale } from '@/lib/finance/formulas'
+import { calculateApproxCostPerSale, calculateCAC } from '@/lib/finance/formulas'
 import {
   calculateCustomerLifetimeMonths,
   calculateLTV,
@@ -26,12 +26,16 @@ export function UnitEconomicsPage() {
   const updateUnitEconomics = useBusinessStore((s) => s.updateUnitEconomics)
 
   const [manualCacInput, setManualCacInput] = useState(unitEconomics.manualCac !== null ? String(unitEconomics.manualCac) : '')
+  const newCustomersCount = unitEconomics.newCustomersCount ?? 0
 
   if (!inputs || !snapshot) return null
 
   const approxCac = calculateApproxCostPerSale(inputs.marketing, inputs.salesCount)
-  const cac = unitEconomics.manualCac ?? approxCac ?? 0
-  const cacIsManual = unitEconomics.manualCac !== null
+  // Настоящий CAC (расходы на маркетинг / НОВЫХ клиентов) — точнее, чем "реклама / все продажи",
+  // потому что не путает повторные покупки существующих клиентов с привлечением новых.
+  const realCac = newCustomersCount > 0 ? calculateCAC(inputs.marketing, newCustomersCount) : null
+  const cac = unitEconomics.manualCac ?? realCac ?? approxCac ?? 0
+  const cacSource = unitEconomics.manualCac !== null ? 'введённое вами значение' : realCac !== null ? 'настоящий CAC по новым клиентам' : 'оценка (реклама / все продажи)'
 
   const lifetimeMonths = calculateCustomerLifetimeMonths(unitEconomics.monthlyChurnRatePct)
   const ltv =
@@ -67,10 +71,35 @@ export function UnitEconomicsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-2 space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-3 gap-4">
             <div className="rounded-xl border border-ink-800 px-4 py-3">
-              <div className="text-xs text-ink-400 mb-1">Оценка (реклама / продажи)</div>
+              <div className="flex items-center gap-1.5 text-xs text-ink-400 mb-1">
+                Оценка (реклама / все продажи)
+                <InfoTooltip>
+                  Грубая прикидка: не отличает новых клиентов от повторных покупок — если у вас много повторных
+                  продаж, эта оценка занижает реальный CAC.
+                </InfoTooltip>
+              </div>
               <div className="text-lg font-semibold text-ink-50">{approxCac !== null ? formatCurrency(approxCac) : '—'}</div>
+            </div>
+            <div>
+              <Label htmlFor="new-customers">Новых клиентов за месяц</Label>
+              <Input
+                id="new-customers"
+                inputMode="decimal"
+                value={newCustomersCount === 0 ? '' : String(newCustomersCount)}
+                onChange={(e) => {
+                  const v = Number(e.target.value.replace(/\s/g, '').replace(',', '.'))
+                  updateUnitEconomics({ newCustomersCount: Number.isFinite(v) && v >= 0 ? v : 0 })
+                }}
+                placeholder="Оставьте пустым, если не отслеживаете"
+                className="mt-2"
+              />
+              {realCac !== null && (
+                <p className="text-xs text-ink-500 mt-1.5">
+                  Настоящий CAC = {formatCurrency(inputs.marketing)} / {newCustomersCount} = <span className="text-ink-300 font-medium">{formatCurrency(realCac)}</span>
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="manual-cac">Точный CAC, ₽ (опционально)</Label>
@@ -81,14 +110,13 @@ export function UnitEconomicsPage() {
                   value={manualCacInput}
                   onChange={(e) => setManualCacInput(e.target.value)}
                   onBlur={applyManualCac}
-                  placeholder="Оставьте пустым, чтобы использовать оценку"
+                  placeholder="Например, из рекламного кабинета"
                 />
               </div>
             </div>
           </div>
           <div className="text-xs text-ink-500">
-            Используется в расчётах ниже: <span className="text-ink-300 font-medium">{formatCurrency(cac)}</span>
-            {cacIsManual ? ' (введённое вами значение)' : ' (оценка)'}
+            Используется в расчётах ниже: <span className="text-ink-300 font-medium">{formatCurrency(cac)}</span> ({cacSource})
           </div>
         </CardContent>
       </Card>

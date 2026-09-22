@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, Wallet } from 'lucide-react'
 import { KpiCard } from '@/features/dashboard/KpiCard'
 import { HealthIndicator } from '@/features/dashboard/HealthIndicator'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useDiagnostics } from '@/hooks/useDiagnostics'
 import { formatCurrency, formatPercent } from '@/lib/utils'
@@ -14,6 +17,8 @@ import {
   calculateRevenuePerEmployee,
 } from '@/lib/finance/formulas'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
+import { buildCashFlowSummary } from '@/lib/finance/cashflow'
+import { calculateRunwayMonths } from '@/lib/finance/stressTest'
 import { BUSINESS_TYPE_KPI_PRIORITIES } from '@/lib/businessTypeKpis'
 
 export function DashboardPage() {
@@ -21,8 +26,18 @@ export function DashboardPage() {
   const diagnostics = useDiagnostics()
   const profile = useBusinessStore((s) => s.profile)
   const history = useBusinessStore((s) => s.history)
+  const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
 
   if (!inputs || !snapshot || !diagnostics || !profile) return null
+
+  const cashBalance = cashFlowInputs ? buildCashFlowSummary(cashFlowInputs).closingBalance : 0
+  const healthHeadline = {
+    cashFlow: snapshot.cashFlow,
+    safetyMarginPct: snapshot.safetyMarginPct,
+    runwayMonths: calculateRunwayMonths(cashBalance, snapshot.cashFlow),
+    dscr: snapshot.dscr,
+    debtToEbitda: snapshot.debtToEbitda,
+  }
 
   const revenuePerEmployee = calculateRevenuePerEmployee(snapshot.revenue, profile.employeesCount)
   const costPerSale = calculateApproxCostPerSale(inputs.marketing, inputs.salesCount)
@@ -59,6 +74,7 @@ export function DashboardPage() {
             <SelfEmployedMetric label="Налог" value={inputs.taxes} sign="-" />
             <SelfEmployedMetric label="Чистый доход" value={snapshot.netProfit} sign="=" bold />
           </div>
+          <SelfEmployedHoursCalculator netProfit={snapshot.netProfit} />
         </Card>
       )}
 
@@ -203,22 +219,29 @@ export function DashboardPage() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
-          <HealthIndicator diagnostics={diagnostics} />
+          <HealthIndicator diagnostics={diagnostics} headline={healthHeadline} />
         </div>
 
         <Card className="p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-3 text-warning-500">
             <AlertTriangle className="size-4" />
-            <span className="text-sm font-medium">Что дальше</span>
+            <span className="text-sm font-medium">Что делать сейчас</span>
           </div>
-          <p className="text-sm text-ink-400 mb-4 flex-1">
-            {diagnostics.problems.length > 0
-              ? `Найдено проблем: ${diagnostics.problems.length}. Проведите полную диагностику, чтобы увидеть план действий.`
-              : 'Явных проблем не найдено. Попробуйте смоделировать рост в симуляторе.'}
-          </p>
+          {diagnostics.actionPlan.length > 0 ? (
+            <ol className="space-y-3 text-sm mb-4 flex-1">
+              {diagnostics.actionPlan.slice(0, 3).map((item, i) => (
+                <li key={item.id} className="flex gap-2">
+                  <span className="text-ink-600 font-medium shrink-0">{i + 1}.</span>
+                  <span className="text-ink-300">{item.action}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-ink-400 mb-4 flex-1">Явных проблем не найдено. Попробуйте смоделировать рост в симуляторе.</p>
+          )}
           <Button asChild size="sm" variant="secondary" className="w-full justify-center">
             <Link to="/app/crisis">
-              Открыть диагностику <ArrowRight className="size-4" />
+              Открыть полный план <ArrowRight className="size-4" />
             </Link>
           </Button>
         </Card>
@@ -240,6 +263,50 @@ function SelfEmployedMetric({ label, value, sign, bold }: { label: string; value
       <div>
         <div className="text-xs text-ink-500">{label}</div>
         <div className={`tabular-nums ${bold ? 'text-lg font-semibold text-ink-50' : 'text-sm text-ink-200'}`}>{formatCurrency(value)}</div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Сколько нужно работать, чтобы получать X чистыми?" — простой обратный расчёт от текущего
+ * дохода в час. Часы за месяц — локальный, непостоянный ввод (что-если калькулятор, не факт).
+ */
+function SelfEmployedHoursCalculator({ netProfit }: { netProfit: number }) {
+  const [hoursPerMonth, setHoursPerMonth] = useState(160)
+  const [targetNetInput, setTargetNetInput] = useState('300000')
+
+  const targetNet = Number(targetNetInput.replace(/\s/g, '').replace(',', '.')) || 0
+  const netPerHour = hoursPerMonth > 0 ? netProfit / hoursPerMonth : null
+  const requiredHours = netPerHour !== null && netPerHour > 0 ? targetNet / netPerHour : null
+
+  return (
+    <div className="mt-4 pt-4 border-t border-ink-800 grid sm:grid-cols-3 gap-4 items-end">
+      <div>
+        <Label htmlFor="hours-per-month" className="text-xs">Рабочих часов в месяц сейчас</Label>
+        <Input
+          id="hours-per-month"
+          inputMode="decimal"
+          value={hoursPerMonth}
+          onChange={(e) => setHoursPerMonth(Math.max(0, Number(e.target.value) || 0))}
+          className="mt-1.5"
+        />
+      </div>
+      <div>
+        <Label htmlFor="target-net" className="text-xs">Хочу получать чистыми, ₽/мес</Label>
+        <Input id="target-net" inputMode="decimal" value={targetNetInput} onChange={(e) => setTargetNetInput(e.target.value)} className="mt-1.5" />
+      </div>
+      <div>
+        <div className="text-xs text-ink-500 mb-1">
+          {netPerHour !== null ? `Сейчас: ${formatCurrency(netPerHour)}/час` : 'Укажите часы'}
+        </div>
+        <div className="text-sm font-semibold text-ink-50">
+          {requiredHours !== null
+            ? `≈ ${Math.round(requiredHours)} ч/мес нужно`
+            : netPerHour !== null && netPerHour <= 0
+              ? 'При текущем доходе/час цель недостижима без изменения ставки'
+              : '—'}
+        </div>
       </div>
     </div>
   )

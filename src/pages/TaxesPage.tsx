@@ -32,7 +32,15 @@ export function TaxesPage() {
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-2xl font-semibold text-ink-50">Налоги</h1>
-        <p className="text-sm text-ink-500 mt-1">Калькулятор налога по режиму — вместо ручного ввода суммы в Финансах.</p>
+        <p className="text-sm text-ink-500 mt-1">
+          Оценка налоговой нагрузки по режиму — ориентир для планирования, а не точный расчёт налога к уплате.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-warning-500/30 bg-warning-500/10 px-4 py-3 text-xs text-warning-500">
+        Это финансовая оценка, а не бухгалтерский расчёт. Фактический налог зависит от региона, страховых взносов,
+        числа сотрудников, применимых вычетов, учёта НДС, авансовых платежей и переходных условий — того, что этот
+        калькулятор не учитывает. Перед уплатой сверьтесь с бухгалтером или актуальным законодательством.
       </div>
 
       <Card>
@@ -145,14 +153,14 @@ export function TaxesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-1.5">
-            Расчёт
+            Оценка
             <InfoTooltip>{result.note}</InfoTooltip>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-2 space-y-4">
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-ink-800 px-4 py-3">
-              <div className="text-xs text-ink-400 mb-1">Налог по расчёту ({TAX_REGIME_LABELS[taxSettings.regime]})</div>
+              <div className="text-xs text-ink-400 mb-1">Оценка налога ({TAX_REGIME_LABELS[taxSettings.regime]})</div>
               <div className="text-lg font-semibold text-ink-50">{formatCurrency(result.amount)}</div>
             </div>
             <div className="rounded-xl border border-ink-800 px-4 py-3 flex items-center justify-between gap-2">

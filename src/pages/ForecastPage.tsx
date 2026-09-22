@@ -6,6 +6,7 @@ import { ForecastChart } from '@/features/forecast/ForecastChart'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
 import { calculateForecast } from '@/lib/finance/forecast'
+import { calculateIncrementalWorkingCapital, calculateWorkingCapitalMetrics } from '@/lib/finance/balanceSheet'
 import { formatCurrency } from '@/lib/utils'
 
 export function ForecastPage() {
@@ -28,6 +29,26 @@ export function ForecastPage() {
   const totalProfit = points.reduce((s, p) => s + p.netProfit, 0)
   const netCashFlow12mo = points.reduce((s, p) => s + p.cashFlow, 0)
   const endingCashBalance = points.length > 0 ? points[points.length - 1].cashBalance : openingCash
+
+  // Сколько доп. оборотного капитала потребует рост выручки до конца прогноза, при текущей
+  // оборачиваемости (DSO/DIO/DPO) — деньги, замороженные в дебиторке и запасах, растут вместе
+  // с бизнесом, и это не то же самое, что прибыль.
+  const cogsRatio = inputs.revenue > 0 ? inputs.cogs / inputs.revenue : 0
+  const lastPoint = points.length > 0 ? points[points.length - 1] : null
+  const projectedCogs = lastPoint ? lastPoint.revenue * cogsRatio : inputs.cogs
+  const workingCapitalMetrics = balanceSheet
+    ? calculateWorkingCapitalMetrics(
+        balanceSheet.currentAssets.receivables,
+        balanceSheet.currentLiabilities.payables,
+        balanceSheet.currentAssets.inventory,
+        inputs.revenue,
+        inputs.cogs,
+      )
+    : null
+  const incrementalWorkingCapital =
+    lastPoint && workingCapitalMetrics
+      ? calculateIncrementalWorkingCapital(inputs.revenue, inputs.cogs, lastPoint.revenue, projectedCogs, workingCapitalMetrics)
+      : null
 
   return (
     <div className="space-y-6">
@@ -121,6 +142,27 @@ export function ForecastPage() {
           </CardContent>
         </Card>
       </div>
+
+      {incrementalWorkingCapital !== null && (
+        <Card className="p-5">
+          <div className="flex items-center gap-1.5 text-xs text-ink-400 mb-1">
+            Доп. оборотный капитал на рост до конца прогноза
+            <InfoTooltip>
+              При росте выручки с {formatCurrency(inputs.revenue)} до {lastPoint ? formatCurrency(lastPoint.revenue) : '—'}
+              {' '}деньги замораживаются в дебиторке и запасах (частично компенсируется ростом кредиторки) — при
+              текущей оборачиваемости (DSO/DIO/DPO из раздела «Баланс»). Это не расход и не убыток, но это деньги,
+              которые бизнес не сможет вывести — рост «съедает» кэш, даже если прибыльный.
+            </InfoTooltip>
+          </div>
+          <div className={`text-lg font-semibold ${incrementalWorkingCapital <= 0 ? 'text-positive-500' : 'text-warning-500'}`}>
+            {incrementalWorkingCapital > 0 ? '+' : ''}
+            {formatCurrency(incrementalWorkingCapital)}
+          </div>
+          {incrementalWorkingCapital <= 0 && (
+            <p className="text-xs text-ink-500 mt-1">Рост выручки не увеличивает потребность в оборотном капитале — кредиторка растёт быстрее дебиторки/запасов.</p>
+          )}
+        </Card>
+      )}
     </div>
   )
 }

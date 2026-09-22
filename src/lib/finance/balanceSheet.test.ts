@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { BalanceSheetInputs } from '@/types/finance'
-import { buildBalanceSheetSnapshot, calculateWorkingCapitalMetrics, emptyBalanceSheet } from './balanceSheet'
+import {
+  buildBalanceSheetSnapshot,
+  calculateIncrementalWorkingCapital,
+  calculateWorkingCapitalMetrics,
+  emptyBalanceSheet,
+} from './balanceSheet'
 
 function makeInputs(overrides: Partial<BalanceSheetInputs> = {}): BalanceSheetInputs {
   return {
@@ -93,5 +98,35 @@ describe('calculateWorkingCapitalMetrics', () => {
     expect(metrics.dpo).toBeNull()
     expect(metrics.dio).toBeNull()
     expect(metrics.cashConversionCycleDays).toBeNull()
+  })
+})
+
+describe('calculateIncrementalWorkingCapital', () => {
+  it('returns null when current turnover ratios are not defined', () => {
+    const metrics = calculateWorkingCapitalMetrics(100000, 50000, 60000, 0, 0)
+    expect(calculateIncrementalWorkingCapital(0, 0, 1000000, 300000, metrics)).toBeNull()
+  })
+
+  it('computes additional receivables + inventory - additional payables scaled by turnover days', () => {
+    // Current: revenue 2.4M, cogs 720k -> DSO 1.5d, DIO 7.5d, DPO 8.75d (from the case above)
+    const metrics = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30)
+    // Growing revenue 2.4M -> 3.6M (delta 1.2M), cogs 720k -> 1.08M (delta 360k)
+    const additional = calculateIncrementalWorkingCapital(2400000, 720000, 3600000, 1080000, metrics, 30)
+    const expectedReceivables = (1200000 / 30) * 1.5
+    const expectedInventory = (360000 / 30) * 7.5
+    const expectedPayables = (360000 / 30) * 8.75
+    expect(additional).toBeCloseTo(expectedReceivables + expectedInventory - expectedPayables, 5)
+    expect(additional).toBeGreaterThan(0) // growth ties up more cash than it frees from supplier credit here
+  })
+
+  it('is zero when projected figures equal current figures (no growth, no extra working capital needed)', () => {
+    const metrics = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30)
+    expect(calculateIncrementalWorkingCapital(2400000, 720000, 2400000, 720000, metrics)).toBeCloseTo(0, 5)
+  })
+
+  it('can be negative when revenue shrinks (working capital is released, not consumed)', () => {
+    const metrics = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30)
+    const released = calculateIncrementalWorkingCapital(2400000, 720000, 1200000, 360000, metrics, 30)
+    expect(released).toBeLessThan(0)
   })
 })

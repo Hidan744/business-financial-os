@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CashFlowRow } from '@/features/cashflow/CashFlowRow'
+import { InfoTooltip } from '@/components/ui/tooltip'
 import { useBusinessStore } from '@/store/businessStore'
+import { useFinancials } from '@/hooks/useFinancials'
 import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useMemo } from 'react'
@@ -9,10 +11,15 @@ import type { CashFlowInputs } from '@/types/finance'
 export function CashflowPage() {
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const updateCashFlowInputs = useBusinessStore((s) => s.updateCashFlowInputs)
+  const { snapshot } = useFinancials()
 
   const summary = useMemo(() => (cashFlowInputs ? buildCashFlowSummary(cashFlowInputs) : null), [cashFlowInputs])
 
   if (!cashFlowInputs || !summary) return null
+
+  const plImpliedCashFlow = snapshot?.cashFlow ?? null
+  const reconciliationGap = plImpliedCashFlow !== null ? summary.netCashFlow - plImpliedCashFlow : null
+  const significantGap = reconciliationGap !== null && Math.abs(reconciliationGap) > Math.abs(summary.netCashFlow) * 0.1 + 1000
 
   function patchOperating(patch: Partial<CashFlowInputs['operating']>) {
     updateCashFlowInputs({ operating: { ...cashFlowInputs!.operating, ...patch } })
@@ -37,6 +44,29 @@ export function CashflowPage() {
         <SummaryTile label="Конец периода" value={summary.closingBalance} />
         <SummaryTile label="Операционный поток" value={summary.operatingNet} />
       </div>
+
+      {plImpliedCashFlow !== null && (
+        <div
+          className={cn(
+            'rounded-xl border px-4 py-3 text-xs flex items-start gap-1.5',
+            significantGap ? 'border-warning-500/30 bg-warning-500/10 text-warning-500' : 'border-ink-800 text-ink-500',
+          )}
+        >
+          <InfoTooltip>
+            Эта страница — детальный Cash Flow (поступления/выплаты по операционной, инвестиционной и финансовой
+            деятельности). На Dashboard/в Прогнозе используется более простой расчёт из П&Л (выручка минус все
+            расходы и налоги). Они не обязаны совпадать точно — реальные деньги приходят не в момент начисления
+            выручки, а разница чаще всего в дебиторке/кредиторке, CAPEX и финансировании — но большое расхождение
+            стоит перепроверить.
+          </InfoTooltip>
+          <span>
+            Сверка с упрощённым расчётом (Dashboard/Прогноз): {formatCurrency(plImpliedCashFlow)}, разница{' '}
+            {reconciliationGap !== null && reconciliationGap >= 0 ? '+' : ''}
+            {reconciliationGap !== null ? formatCurrency(reconciliationGap) : '—'}
+            {significantGap ? ' — существенная, стоит перепроверить ввод.' : '.'}
+          </span>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

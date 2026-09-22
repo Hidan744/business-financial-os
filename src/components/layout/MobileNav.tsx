@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { to: '/app/simulator', label: 'Симулятор' },
   { to: '/app/sales', label: 'Продажи' },
   { to: '/app/forecast', label: 'Прогноз' },
+  { to: '/app/plan', label: 'Финансовый план' },
   { to: '/app/ai-cfo', label: 'AI CFO' },
   { to: '/app/crisis', label: 'Антикризис' },
   { to: '/app/stress-test', label: 'Стресс-тест' },

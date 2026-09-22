@@ -22,6 +22,7 @@ const HistoryImportPage = lazy(() => import('@/pages/HistoryImportPage').then((m
 const SimulatorPage = lazy(() => import('@/pages/SimulatorPage').then((m) => ({ default: m.SimulatorPage })))
 const SalesPage = lazy(() => import('@/pages/SalesPage').then((m) => ({ default: m.SalesPage })))
 const ForecastPage = lazy(() => import('@/pages/ForecastPage').then((m) => ({ default: m.ForecastPage })))
+const FinancialPlanPage = lazy(() => import('@/pages/FinancialPlanPage').then((m) => ({ default: m.FinancialPlanPage })))
 const AiCfoPage = lazy(() => import('@/pages/AiCfoPage').then((m) => ({ default: m.AiCfoPage })))
 const CrisisPage = lazy(() => import('@/pages/CrisisPage').then((m) => ({ default: m.CrisisPage })))
 const StressTestPage = lazy(() => import('@/pages/StressTestPage').then((m) => ({ default: m.StressTestPage })))
@@ -76,6 +77,7 @@ function App() {
             <Route path="simulator" element={<SimulatorPage />} />
             <Route path="sales" element={<SalesPage />} />
             <Route path="forecast" element={<ForecastPage />} />
+            <Route path="plan" element={<FinancialPlanPage />} />
             <Route path="ai-cfo" element={<AiCfoPage />} />
             <Route path="crisis" element={<CrisisPage />} />
             <Route path="stress-test" element={<StressTestPage />} />

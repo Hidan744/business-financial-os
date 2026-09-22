@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { to: '/app/simulator', label: 'Симулятор', icon: SlidersHorizontal },
   { to: '/app/sales', label: 'Продажи', icon: Target },
   { to: '/app/forecast', label: 'Прогноз', icon: TrendingUp },
+  { to: '/app/plan', label: 'Финансовый план', icon: Target },
   { to: '/app/ai-cfo', label: 'AI CFO', icon: Bot },
   { to: '/app/crisis', label: 'Антикризис', icon: AlertTriangle },
   { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },

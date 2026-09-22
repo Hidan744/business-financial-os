@@ -25,6 +25,7 @@ export const PROTECTABLE_ROUTES: { path: string; label: string }[] = [
   { path: '/app/simulator', label: 'Симулятор' },
   { path: '/app/sales', label: 'Продажи' },
   { path: '/app/forecast', label: 'Прогноз' },
+  { path: '/app/plan', label: 'Финансовый план' },
   { path: '/app/ai-cfo', label: 'AI CFO' },
   { path: '/app/crisis', label: 'Антикризис' },
   { path: '/app/stress-test', label: 'Стресс-тест' },
