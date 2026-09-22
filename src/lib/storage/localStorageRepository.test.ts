@@ -53,6 +53,7 @@ function makeLegacyBusinessState(): BusinessState {
       currentLiabilities: { payables: 0, shortTermDebt: 0, other: 0 },
       nonCurrentLiabilities: { longTermDebt: 0, other: 0 },
     },
+    balanceSheetHistory: [],
     employees: [],
     plannedHires: [],
     goals: [],

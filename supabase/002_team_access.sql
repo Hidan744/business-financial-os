@@ -19,7 +19,7 @@
 -- Домены и какие ключи BusinessState они открывают — ДОЛЖНО зеркалить
 -- TEAM_DOMAINS в src/types/teamAccess.ts на клиенте:
 --   finance        -> financialInputs, history, targets
---   balance        -> balanceSheet
+--   balance        -> balanceSheet, balanceSheetHistory
 --   cashflow       -> cashFlowInputs
 --   taxes          -> taxSettings
 --   forecast       -> forecastConfig
@@ -199,7 +199,10 @@ begin
     );
   end if;
   if 'balance' = any(v_domains) then
-    v_result := v_result || jsonb_build_object('balanceSheet', v_data->'balanceSheet');
+    v_result := v_result || jsonb_build_object(
+      'balanceSheet', v_data->'balanceSheet',
+      'balanceSheetHistory', coalesce(v_data->'balanceSheetHistory', '[]'::jsonb)
+    );
   end if;
   if 'cashflow' = any(v_domains) then
     v_result := v_result || jsonb_build_object('cashFlowInputs', v_data->'cashFlowInputs');
@@ -281,6 +284,7 @@ begin
     when 'history' then 'finance'
     when 'targets' then 'finance'
     when 'balanceSheet' then 'balance'
+    when 'balanceSheetHistory' then 'balance'
     when 'cashFlowInputs' then 'cashflow'
     when 'taxSettings' then 'taxes'
     when 'forecastConfig' then 'forecast'

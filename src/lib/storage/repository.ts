@@ -22,6 +22,8 @@ export interface BusinessState {
   targets: PeriodTarget[]
   /** Баланс на конец текущего периода. */
   balanceSheet: BalanceSheetInputs
+  /** Закрытые (прошлые) балансы — по одному на закрытый период, для сверки и динамики. Не включает текущий balanceSheet. */
+  balanceSheetHistory: BalanceSheetInputs[]
   /** Штат сотрудников (для ФОТ снизу вверх). */
   employees: Employee[]
   /** Запланированные, ещё не нанятые сотрудники. */

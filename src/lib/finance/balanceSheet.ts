@@ -101,6 +101,32 @@ export function calculateWorkingCapitalMetrics(
  * больше денег заморожено в запасах — частично компенсируется ростом кредиторки.
  * null — если текущая оборачиваемость не определена (нет данных баланса или revenue/cogs = 0).
  */
+export interface CashReconciliation {
+  /** Остаток денег на конец периода по Cash Flow (openingBalance + netCashFlow). */
+  cashFlowClosingBalance: number
+  /** Остаток денег на конец периода по Балансу (currentAssets.cash). */
+  balanceSheetCash: number
+  /** balanceSheetCash − cashFlowClosingBalance. В идеале 0 — это одна и та же величина, введённая в двух местах. */
+  gap: number
+  /**
+   * В отличие от сверки с упрощённым П&Л-расчётом (см. CashflowPage), это не оценка —
+   * Cash Flow и Баланс описывают буквально один и тот же остаток денег на одну и ту же
+   * дату, поэтому расхождение почти всегда означает ошибку ввода, а не разницу методик.
+   * Порог — только округление (100 ₽), а не проценты от суммы.
+   */
+  isSignificant: boolean
+}
+
+export function reconcileCashWithBalanceSheet(cashFlowClosingBalance: number, balanceSheetCash: number): CashReconciliation {
+  const gap = balanceSheetCash - cashFlowClosingBalance
+  return {
+    cashFlowClosingBalance,
+    balanceSheetCash,
+    gap,
+    isSignificant: Math.abs(gap) > 100,
+  }
+}
+
 export function calculateIncrementalWorkingCapital(
   currentRevenue: number,
   currentCogs: number,

@@ -4,6 +4,7 @@ import { InfoTooltip } from '@/components/ui/tooltip'
 import { useBusinessStore } from '@/store/businessStore'
 import { useFinancials } from '@/hooks/useFinancials'
 import { buildCashFlowSummary } from '@/lib/finance/cashflow'
+import { reconcileCashWithBalanceSheet } from '@/lib/finance/balanceSheet'
 import { formatCurrency, cn } from '@/lib/utils'
 import { useMemo } from 'react'
 import type { CashFlowInputs } from '@/types/finance'
@@ -11,6 +12,7 @@ import type { CashFlowInputs } from '@/types/finance'
 export function CashflowPage() {
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const updateCashFlowInputs = useBusinessStore((s) => s.updateCashFlowInputs)
+  const balanceSheet = useBusinessStore((s) => s.balanceSheet)
   const { snapshot } = useFinancials()
 
   const summary = useMemo(() => (cashFlowInputs ? buildCashFlowSummary(cashFlowInputs) : null), [cashFlowInputs])
@@ -20,6 +22,8 @@ export function CashflowPage() {
   const plImpliedCashFlow = snapshot?.cashFlow ?? null
   const reconciliationGap = plImpliedCashFlow !== null ? summary.netCashFlow - plImpliedCashFlow : null
   const significantGap = reconciliationGap !== null && Math.abs(reconciliationGap) > Math.abs(summary.netCashFlow) * 0.1 + 1000
+
+  const balanceCheck = balanceSheet ? reconcileCashWithBalanceSheet(summary.closingBalance, balanceSheet.currentAssets.cash) : null
 
   function patchOperating(patch: Partial<CashFlowInputs['operating']>) {
     updateCashFlowInputs({ operating: { ...cashFlowInputs!.operating, ...patch } })
@@ -64,6 +68,29 @@ export function CashflowPage() {
             {reconciliationGap !== null && reconciliationGap >= 0 ? '+' : ''}
             {reconciliationGap !== null ? formatCurrency(reconciliationGap) : '—'}
             {significantGap ? ' — существенная, стоит перепроверить ввод.' : '.'}
+          </span>
+        </div>
+      )}
+
+      {balanceCheck && (
+        <div
+          className={cn(
+            'rounded-xl border px-4 py-3 text-xs flex items-start gap-1.5',
+            balanceCheck.isSignificant ? 'border-negative-500/30 bg-negative-500/10 text-negative-500' : 'border-ink-800 text-ink-500',
+          )}
+        >
+          <InfoTooltip>
+            Это не оценка, а проверка на тождество: остаток денег на конец периода по Cash Flow
+            (начало + чистый поток) и «Деньги (касса, счета)» в Балансе — это буквально одна и та
+            же величина на одну и ту же дату, введённая в двух разных местах. Если она не совпадает —
+            где-то ошибка ввода, а не разница методик (в отличие от сверки с П&Л выше).
+          </InfoTooltip>
+          <span>
+            Остаток денег по Балансу: {formatCurrency(balanceCheck.balanceSheetCash)}, по Cash Flow:{' '}
+            {formatCurrency(balanceCheck.cashFlowClosingBalance)}
+            {balanceCheck.isSignificant
+              ? ` — расхождение ${balanceCheck.gap >= 0 ? '+' : ''}${formatCurrency(balanceCheck.gap)}, должно быть 0. Проверьте ввод на этой странице или в Балансе.`
+              : ' — сходится.'}
           </span>
         </div>
       )}

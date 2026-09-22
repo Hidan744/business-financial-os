@@ -35,7 +35,7 @@ export const ALL_TEAM_DOMAINS = Object.keys(TEAM_DOMAIN_LABELS) as TeamDomain[]
  */
 export const DOMAIN_KEYS: Record<TeamDomain, string[]> = {
   finance: ['financialInputs', 'history', 'targets'],
-  balance: ['balanceSheet'],
+  balance: ['balanceSheet', 'balanceSheetHistory'],
   cashflow: ['cashFlowInputs'],
   taxes: ['taxSettings'],
   forecast: ['forecastConfig'],

@@ -8,7 +8,7 @@ import { calculateApproxCostPerSale, calculateCAC } from '@/lib/finance/formulas
 import { calculateCustomerLifetimeMonths, calculateLTV, calculateLtvCacRatio, calculatePaybackMonths } from '@/lib/finance/unitEconomics'
 import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import { calculateRunwayMonths } from '@/lib/finance/stressTest'
-import { calculateWorkingCapitalMetrics } from '@/lib/finance/balanceSheet'
+import { calculateWorkingCapitalMetrics, reconcileCashWithBalanceSheet } from '@/lib/finance/balanceSheet'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
 
 /**
@@ -33,6 +33,13 @@ export interface FinancialContext {
     safetyMarginPct: number
   }
   cashFlow: { cashFlowThisPeriod: number; cashBalance: number | null; runwayMonths: number | null }
+  /**
+   * Расхождение между остатком денег в Cash Flow (закрытие периода) и в Балансе
+   * ("Деньги") — это буквально одна и та же величина, введённая в двух местах, поэтому
+   * ненулевой gap почти всегда значит ошибку ввода, а не разницу методик. null — если
+   * не заполнены и Cash Flow, и Баланс.
+   */
+  cashReconciliation: { gap: number; isSignificant: boolean } | null
   debt: { debtServiceRatioPct: number; debtToEbitda: number | null; dscr: number | null }
   marketing: { marketingEfficiencyPct: number; romiPct: number | null }
   /** Последние закрытые периоды (не больше 6, от старых к новым) — для вопросов про динамику. */
@@ -66,6 +73,8 @@ export function buildFinancialContext(params: FinancialContextParams): Financial
   const cashSummary = cashFlowInputs ? buildCashFlowSummary(cashFlowInputs) : null
   const cashBalance = cashSummary?.closingBalance ?? null
   const runwayMonths = cashBalance !== null ? calculateRunwayMonths(cashBalance, snapshot.cashFlow) : null
+  const cashReconciliation =
+    cashSummary && balanceSheet ? reconcileCashWithBalanceSheet(cashSummary.closingBalance, balanceSheet.currentAssets.cash) : null
 
   const sortedHistory = [...history].sort((a, b) => a.period.localeCompare(b.period)).slice(-6)
 
@@ -119,6 +128,7 @@ export function buildFinancialContext(params: FinancialContextParams): Financial
       cashBalance,
       runwayMonths,
     },
+    cashReconciliation: cashReconciliation ? { gap: cashReconciliation.gap, isSignificant: cashReconciliation.isSignificant } : null,
     debt: {
       debtServiceRatioPct: snapshot.debtServiceRatioPct,
       debtToEbitda: snapshot.debtToEbitda,

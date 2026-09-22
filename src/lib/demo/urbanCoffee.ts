@@ -118,6 +118,18 @@ export function createUrbanCoffeeDemo(): BusinessState {
       currentLiabilities: { payables: 210000, shortTermDebt: 0, other: 0 },
       nonCurrentLiabilities: { longTermDebt: 500000, other: 0 },
     },
+    // Cash (645000) сходится с closingBalance из cashFlowInputs выше (350000 opening + 295000
+    // netCashFlow) — намеренно, чтобы демо сразу показывало сходящуюся сверку Cash Flow ↔ Баланс.
+    balanceSheetHistory: [
+      {
+        businessId,
+        period: shiftPeriod(CURRENT_PERIOD, 1),
+        currentAssets: { cash: 350000, receivables: 95000, inventory: 165000, other: 0 },
+        nonCurrentAssets: { fixedAssets: 1410000, other: 0 },
+        currentLiabilities: { payables: 195000, shortTermDebt: 0, other: 0 },
+        nonCurrentLiabilities: { longTermDebt: 550000, other: 0 },
+      },
+    ],
     employees: [
       {
         id: 'emp1',

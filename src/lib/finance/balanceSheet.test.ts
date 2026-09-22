@@ -5,6 +5,7 @@ import {
   calculateIncrementalWorkingCapital,
   calculateWorkingCapitalMetrics,
   emptyBalanceSheet,
+  reconcileCashWithBalanceSheet,
 } from './balanceSheet'
 
 function makeInputs(overrides: Partial<BalanceSheetInputs> = {}): BalanceSheetInputs {
@@ -128,5 +129,30 @@ describe('calculateIncrementalWorkingCapital', () => {
     const metrics = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30)
     const released = calculateIncrementalWorkingCapital(2400000, 720000, 1200000, 360000, metrics, 30)
     expect(released).toBeLessThan(0)
+  })
+})
+
+describe('reconcileCashWithBalanceSheet', () => {
+  it('is not significant when cash flow closing balance and balance sheet cash match exactly', () => {
+    const result = reconcileCashWithBalanceSheet(645000, 645000)
+    expect(result.gap).toBe(0)
+    expect(result.isSignificant).toBe(false)
+  })
+
+  it('tolerates only rounding noise, not a percentage of the balance', () => {
+    const small = reconcileCashWithBalanceSheet(645000, 645050)
+    expect(small.isSignificant).toBe(false)
+
+    // A 1% gap on a large balance would pass a percentage-based check, but cash flow and
+    // balance sheet describe the exact same number, so any non-trivial gap is a real error.
+    const large = reconcileCashWithBalanceSheet(645000, 651450)
+    expect(large.gap).toBe(6450)
+    expect(large.isSignificant).toBe(true)
+  })
+
+  it('reports the gap as balanceSheetCash minus cashFlowClosingBalance (sign matters for diagnosis)', () => {
+    const result = reconcileCashWithBalanceSheet(500000, 470000)
+    expect(result.gap).toBe(-30000)
+    expect(result.isSignificant).toBe(true)
   })
 })

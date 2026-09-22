@@ -4,17 +4,22 @@ import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
 import { buildBalanceSheetSnapshot, calculateWorkingCapitalMetrics } from '@/lib/finance/balanceSheet'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, cn } from '@/lib/utils'
+import { formatPeriodLabel } from '@/lib/period'
 import type { BalanceSheetInputs } from '@/types/finance'
 
 export function BalancePage() {
   const { inputs } = useFinancials()
   const balanceSheet = useBusinessStore((s) => s.balanceSheet)
+  const balanceSheetHistory = useBusinessStore((s) => s.balanceSheetHistory)
   const updateBalanceSheet = useBusinessStore((s) => s.updateBalanceSheet)
 
   if (!inputs || !balanceSheet) return null
 
   const snapshot = buildBalanceSheetSnapshot(balanceSheet)
+  const sortedHistory = [...balanceSheetHistory].sort((a, b) => b.period.localeCompare(a.period))
+  const previousPeriod = sortedHistory[0] ?? null
+  const previousSnapshot = previousPeriod ? buildBalanceSheetSnapshot(previousPeriod) : null
   const workingCapitalMetrics = calculateWorkingCapitalMetrics(
     balanceSheet.currentAssets.receivables,
     balanceSheet.currentLiabilities.payables,
@@ -44,15 +49,29 @@ export function BalancePage() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <SummaryTile label="Активы" value={snapshot.totalAssets} />
-        <SummaryTile label="Обязательства" value={snapshot.totalLiabilities} />
+        <SummaryTile
+          label="Активы"
+          value={snapshot.totalAssets}
+          delta={previousSnapshot ? snapshot.totalAssets - previousSnapshot.totalAssets : null}
+        />
+        <SummaryTile
+          label="Обязательства"
+          value={snapshot.totalLiabilities}
+          delta={previousSnapshot ? snapshot.totalLiabilities - previousSnapshot.totalLiabilities : null}
+        />
         <SummaryTile
           label="Капитал"
           value={snapshot.equity}
           accent
           tooltip="Собственный капитал = Активы − Обязательства. Считается автоматически, чтобы баланс всегда сходился."
+          delta={previousSnapshot ? snapshot.equity - previousSnapshot.equity : null}
         />
-        <SummaryTile label="Оборотный капитал" value={snapshot.workingCapital} tooltip="Оборотные активы − Краткосрочные обязательства." />
+        <SummaryTile
+          label="Оборотный капитал"
+          value={snapshot.workingCapital}
+          tooltip="Оборотные активы − Краткосрочные обязательства."
+          delta={previousSnapshot ? snapshot.workingCapital - previousSnapshot.workingCapital : null}
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -157,11 +176,92 @@ export function BalancePage() {
           </div>
         </CardContent>
       </Card>
+
+      {sortedHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              Динамика по периодам
+              <InfoTooltip>
+                Баланс на конец каждого закрытого периода — архивируется автоматически при закрытии
+                периода на странице «История». Помогает увидеть, растут ли деньги/капитал со временем,
+                а не только их значение здесь и сейчас.
+              </InfoTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-ink-500 text-left">
+                    <th className="font-medium pb-2 pr-4">Период</th>
+                    <th className="font-medium pb-2 pr-4">Деньги</th>
+                    <th className="font-medium pb-2 pr-4">Активы</th>
+                    <th className="font-medium pb-2">Капитал</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-800/60">
+                  <BalanceHistoryRow
+                    period={inputs.period}
+                    label="Текущий"
+                    cash={balanceSheet.currentAssets.cash}
+                    snapshot={snapshot}
+                    current
+                  />
+                  {sortedHistory.map((record) => (
+                    <BalanceHistoryRow
+                      key={record.period}
+                      period={record.period}
+                      cash={record.currentAssets.cash}
+                      snapshot={buildBalanceSheetSnapshot(record)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
 
-function SummaryTile({ label, value, accent, tooltip }: { label: string; value: number; accent?: boolean; tooltip?: string }) {
+function BalanceHistoryRow({
+  period,
+  label,
+  cash,
+  snapshot,
+  current,
+}: {
+  period: string
+  label?: string
+  cash: number
+  snapshot: ReturnType<typeof buildBalanceSheetSnapshot>
+  current?: boolean
+}) {
+  return (
+    <tr className={cn('text-sm', current && 'text-ink-50 font-medium')}>
+      <td className="py-2 pr-4 text-ink-300">{label ?? formatPeriodLabel(period)}</td>
+      <td className="py-2 pr-4">{formatCurrency(cash)}</td>
+      <td className="py-2 pr-4">{formatCurrency(snapshot.totalAssets)}</td>
+      <td className={cn('py-2', snapshot.equity >= 0 ? 'text-positive-500' : 'text-negative-500')}>{formatCurrency(snapshot.equity)}</td>
+    </tr>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  accent,
+  tooltip,
+  delta,
+}: {
+  label: string
+  value: number
+  accent?: boolean
+  tooltip?: string
+  delta?: number | null
+}) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-1.5 text-xs text-ink-400 mb-1">
@@ -171,6 +271,12 @@ function SummaryTile({ label, value, accent, tooltip }: { label: string; value: 
       <div className={`text-lg font-semibold ${accent ? (value >= 0 ? 'text-positive-500' : 'text-negative-500') : 'text-ink-50'}`}>
         {formatCurrency(value)}
       </div>
+      {delta !== null && delta !== undefined && (
+        <div className={cn('text-xs mt-0.5', delta >= 0 ? 'text-positive-500' : 'text-negative-500')}>
+          {delta >= 0 ? '+' : ''}
+          {formatCurrency(delta)} к прошлому периоду
+        </div>
+      )}
     </Card>
   )
 }

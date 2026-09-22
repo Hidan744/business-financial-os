@@ -36,6 +36,7 @@ interface Store {
   history: FinancialInputs[]
   targets: PeriodTarget[]
   balanceSheet: BalanceSheetInputs | null
+  balanceSheetHistory: BalanceSheetInputs[]
   employees: Employee[]
   plannedHires: PlannedHire[]
   goals: Goal[]
@@ -144,6 +145,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     balanceSheet: active
       ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs?.period ?? currentPeriod()))
       : null,
+    balanceSheetHistory: active?.balanceSheetHistory ?? [],
     employees: active?.employees ?? [],
     plannedHires: active?.plannedHires ?? [],
     goals: active?.goals ?? [],
@@ -182,6 +184,7 @@ async function mutateActiveBusiness(
     history: current.history ?? [],
     targets: current.targets ?? [],
     balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs?.period ?? currentPeriod()),
+    balanceSheetHistory: current.balanceSheetHistory ?? [],
     employees: current.employees ?? [],
     plannedHires: current.plannedHires ?? [],
     goals: current.goals ?? [],
@@ -226,6 +229,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   history: [],
   targets: [],
   balanceSheet: null,
+  balanceSheetHistory: [],
   employees: [],
   plannedHires: [],
   goals: [],
@@ -287,6 +291,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       history: [],
       targets: [],
       balanceSheet: emptyBalanceSheet(profile.id, financialInputs.period),
+      balanceSheetHistory: [],
       employees: [],
       plannedHires: [],
       goals: [],
@@ -389,7 +394,13 @@ export const useBusinessStore = create<Store>((set, get) => ({
         revenue: 0,
         salesCount: 0,
       }
-      return { ...b, history, financialInputs: nextFinancialInputs }
+      // Баланс — это остаток на конец периода, а не поток за период, поэтому в отличие от
+      // financialInputs он НЕ обнуляется на новый период (переносится как есть, пользователь
+      // дальше правит его как "текущий"). В архив на закрытый период уходит копия того,
+      // каким он был на момент закрытия — для истории и сверки Cash Flow ↔ Баланс.
+      const closedBalanceSheet = { ...b.balanceSheet, period: closedRecord.period }
+      const balanceSheetHistory = [...b.balanceSheetHistory.filter((s) => s.period !== closedRecord.period), closedBalanceSheet]
+      return { ...b, history, financialInputs: nextFinancialInputs, balanceSheetHistory }
     })
   },
 
@@ -503,6 +514,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       history: [],
       targets: [],
       balanceSheet: null,
+      balanceSheetHistory: [],
       employees: [],
       plannedHires: [],
       goals: [],
