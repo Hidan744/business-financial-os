@@ -4,6 +4,7 @@ import type { BusinessState, MultiBusinessState } from './repository'
 // Мок supabase-клиента: имитирует таблицу businesses в памяти с той же
 // формой ответа {data, error}, что и настоящий supabase-js query builder.
 const table: { id: string; owner_id: string; data: BusinessState }[] = []
+const memberships: { business_id: string; user_id: string; allowed_domains: string[] }[] = []
 const currentUser = { id: 'user-1' }
 
 function makeQuery(rows: typeof table) {
@@ -29,6 +30,38 @@ vi.mock('@/lib/supabase/client', () => ({
   supabase: {
     auth: {
       getUser: async () => ({ data: { user: currentUser } }),
+    },
+    // load() теперь идёт через RPC (list_my_businesses + get_business_view), а не через
+    // прямой select — в этих тестах нет участников команды, поэтому имитируем только
+    // владельческую ветку (все строки в table принадлежат currentUser).
+    rpc: async (name: string, args?: Record<string, unknown>) => {
+      if (name === 'list_my_businesses') {
+        const owned = table
+          .filter((r) => r.owner_id === currentUser.id)
+          .map((r) => ({ id: r.id, role: 'owner', allowed_domains: null }))
+        const member = memberships
+          .filter((m) => m.user_id === currentUser.id)
+          .map((m) => ({ id: m.business_id, role: 'member', allowed_domains: m.allowed_domains }))
+        return { data: [...owned, ...member], error: null }
+      }
+      if (name === 'get_business_view') {
+        const row = table.find((r) => r.id === args?.p_business_id)
+        return { data: row?.data ?? null, error: row ? null : { message: 'not found' } }
+      }
+      if (name === 'update_business_section') {
+        const businessId = args?.p_business_id as string
+        const key = args?.p_key as string
+        const membership = memberships.find((m) => m.business_id === businessId && m.user_id === currentUser.id)
+        if (!membership) return { data: null, error: { message: 'not a member of this business' } }
+        const required: Record<string, string> = { financialInputs: 'finance', goals: 'goals' }
+        if (!membership.allowed_domains.includes(required[key])) {
+          return { data: null, error: { message: `no write access to ${key}` } }
+        }
+        const row = table.find((r) => r.id === businessId)
+        if (row) (row.data as unknown as Record<string, unknown>)[key] = args?.p_value
+        return { data: null, error: null }
+      }
+      return { data: null, error: { message: `unmocked rpc ${name}` } }
     },
     from: (_name: string) => ({
       select: (..._args: unknown[]) => makeQuery(table),
@@ -59,7 +92,7 @@ vi.mock('@/lib/supabase/client', () => ({
   },
 }))
 
-const { SupabaseFinanceRepository } = await import('./supabaseFinanceRepository')
+const { SupabaseFinanceRepository, getBusinessRole, getMyAllowedDomains } = await import('./supabaseFinanceRepository')
 
 function makeBusiness(id: string, name: string): BusinessState {
   return {
@@ -108,6 +141,7 @@ function makeBusiness(id: string, name: string): BusinessState {
 describe('SupabaseFinanceRepository', () => {
   beforeEach(() => {
     table.length = 0
+    memberships.length = 0
     localStorage.clear()
   })
 
@@ -155,5 +189,45 @@ describe('SupabaseFinanceRepository', () => {
     await repo.save({ activeBusinessId: 'ghost', businesses: { b1: makeBusiness('b1', 'Cafe One') } })
     const loaded = await repo.load()
     expect(loaded?.activeBusinessId).toBe('b1')
+  })
+
+  it('load() includes businesses the user is a team member of, not just owned ones', async () => {
+    // b1 owned by someone else, current user is a member with the 'finance' domain
+    table.push({ id: 'b1', owner_id: 'owner-2', data: makeBusiness('b1', "Someone Else's Cafe") })
+    memberships.push({ business_id: 'b1', user_id: currentUser.id, allowed_domains: ['finance'] })
+
+    const repo = new SupabaseFinanceRepository()
+    const loaded = await repo.load()
+    expect(loaded?.businesses.b1.profile.name).toBe("Someone Else's Cafe")
+    expect(getBusinessRole('b1')).toBe('member')
+    expect(getMyAllowedDomains('b1')).toEqual(['finance'])
+  })
+
+  it('save() never upserts or deletes a business the user is only a member of', async () => {
+    table.push({ id: 'b1', owner_id: 'owner-2', data: makeBusiness('b1', 'Member Business') })
+    memberships.push({ business_id: 'b1', user_id: currentUser.id, allowed_domains: ['finance'] })
+    const repo = new SupabaseFinanceRepository()
+    await repo.load() // populates the role cache so save() knows b1 is a member business
+
+    const original = table[0].data
+    await repo.save({ activeBusinessId: 'b1', businesses: { b1: makeBusiness('b1', 'Tampered Name') } })
+
+    expect(table).toHaveLength(1) // not deleted as "stale"
+    expect(table[0].data).toBe(original) // not overwritten either — save() skips member businesses entirely
+  })
+
+  it('saveMemberSection() writes a field only when the required domain is granted', async () => {
+    const business = makeBusiness('b1', 'Member Business')
+    table.push({ id: 'b1', owner_id: 'owner-2', data: business })
+    memberships.push({ business_id: 'b1', user_id: currentUser.id, allowed_domains: ['finance'] })
+
+    const repo = new SupabaseFinanceRepository()
+    const ok = await repo.saveMemberSection('b1', 'financialInputs', { ...business.financialInputs, revenue: 999999 })
+    expect(ok).toBe(true)
+    expect(table[0].data.financialInputs.revenue).toBe(999999)
+
+    // 'goals' requires the 'goals' domain, which this member was not granted
+    const denied = await repo.saveMemberSection('b1', 'goals', [{ id: 'g1' }])
+    expect(denied).toBe(false)
   })
 })

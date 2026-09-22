@@ -4,6 +4,8 @@ import { Home, Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
+import { useBusinessStore } from '@/store/businessStore'
+import { isRouteUnlockedForMember } from '@/types/teamAccess'
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard' },
@@ -30,6 +32,10 @@ const NAV_ITEMS = [
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
+  const myRole = useBusinessStore((s) => s.myRole)
+  const myAllowedDomains = useBusinessStore((s) => s.myAllowedDomains)
+
+  const visibleItems = NAV_ITEMS.filter(({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains))
 
   return (
     <div className="lg:hidden print:hidden">
@@ -56,7 +62,7 @@ export function MobileNav() {
               <BusinessSwitcher />
             </div>
             <nav className="p-3 space-y-1">
-              {NAV_ITEMS.map((item) => (
+              {visibleItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

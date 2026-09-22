@@ -14,9 +14,11 @@ import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
 import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
+import { getBusinessRole, getMyAllowedDomains, supabaseFinanceRepository } from '@/lib/storage/supabaseFinanceRepository'
 import { createUrbanCoffeeDemo } from '@/lib/demo/urbanCoffee'
 import { emptyBalanceSheet } from '@/lib/finance/balanceSheet'
 import { generateId } from '@/lib/id'
+import type { BusinessRole, TeamDomain } from '@/types/teamAccess'
 
 interface Store {
   status: 'loading' | 'onboarding' | 'ready'
@@ -40,6 +42,14 @@ interface Store {
   unitEconomics: UnitEconomicsAssumptions
   taxSettings: TaxSettings
   accessSettings: AccessSettings
+  /**
+   * Роль текущего пользователя в активном бизнесе (только для Supabase-бизнесов —
+   * null в гостевом/локальном режиме, там реальной multi-user модели нет).
+   * 'owner' — видит и пишет всё. 'member' — только домены из myAllowedDomains,
+   * запись идёт через scoped RPC, а не общий save() (см. mutateActiveBusiness).
+   */
+  myRole: BusinessRole | null
+  myAllowedDomains: TeamDomain[]
 
   hydrate: () => Promise<void>
   loadDemo: () => Promise<void>
@@ -98,6 +108,10 @@ function emptyCashFlow(businessId: string, period: string): CashFlowInputs {
   }
 }
 
+function currentPeriod(): string {
+  return new Date().toISOString().slice(0, 7)
+}
+
 /**
  * salesCountGrowthPct заменил monthlyGrowthRatePct (тот же смысл — рост количества продаж,
  * честное название). Записи, сохранённые до переименования, читают старое поле как запасной вариант.
@@ -125,13 +139,19 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     // истории/целей/баланса (старая форма BusinessState).
     history: active?.history ?? [],
     targets: active?.targets ?? [],
-    balanceSheet: active ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs.period)) : null,
+    // active.financialInputs может отсутствовать у участника команды без домена 'finance'
+    // (get_business_view отдаёт только разрешённые ключи) — тогда просто берём текущий месяц.
+    balanceSheet: active
+      ? (active.balanceSheet ?? emptyBalanceSheet(active.profile.id, active.financialInputs?.period ?? currentPeriod()))
+      : null,
     employees: active?.employees ?? [],
     plannedHires: active?.plannedHires ?? [],
     goals: active?.goals ?? [],
     unitEconomics: active?.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: active?.taxSettings ?? DEFAULT_TAX_SETTINGS,
     accessSettings: active?.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
+    myRole: activeBusinessId ? getBusinessRole(activeBusinessId) : null,
+    myAllowedDomains: activeBusinessId ? getMyAllowedDomains(activeBusinessId) : [],
   }
 }
 
@@ -161,7 +181,7 @@ async function mutateActiveBusiness(
     forecastConfig: normalizeForecastConfig(current.forecastConfig),
     history: current.history ?? [],
     targets: current.targets ?? [],
-    balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs.period),
+    balanceSheet: current.balanceSheet ?? emptyBalanceSheet(current.profile.id, current.financialInputs?.period ?? currentPeriod()),
     employees: current.employees ?? [],
     plannedHires: current.plannedHires ?? [],
     goals: current.goals ?? [],
@@ -169,8 +189,26 @@ async function mutateActiveBusiness(
     taxSettings: current.taxSettings ?? DEFAULT_TAX_SETTINGS,
     accessSettings: current.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
   }
-  const nextBusinesses = { ...businesses, [activeBusinessId]: updater(normalized) }
+  const updated = updater(normalized)
+  const nextBusinesses = { ...businesses, [activeBusinessId]: updated }
   set({ businesses: nextBusinesses, ...deriveActiveFields(nextBusinesses, activeBusinessId) })
+
+  const role = getBusinessRole(activeBusinessId)
+  if (role === 'member') {
+    // Участник не может сохранить весь blob (RLS это и не позволит) — пишем только то,
+    // что реально изменилось, по одному верхнеуровневому ключу за раз через scoped RPC.
+    // Сравнение по ссылке работает надёжно, потому что все update-действия в этом сторе
+    // собирают следующее состояние через спред ({...b, key: ...}) — непотронутые ключи
+    // всегда сохраняют ту же ссылку, изменённые — всегда получают новую.
+    const keys = Object.keys(updated) as (keyof BusinessState)[]
+    for (const key of keys) {
+      if (updated[key] !== normalized[key]) {
+        await supabaseFinanceRepository.saveMemberSection(activeBusinessId, key, updated[key])
+      }
+    }
+    return
+  }
+
   await persist(get)
 }
 
@@ -194,6 +232,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
   unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   taxSettings: DEFAULT_TAX_SETTINGS,
   accessSettings: DEFAULT_ACCESS_SETTINGS,
+  myRole: null,
+  myAllowedDomains: [],
 
   hydrate: async () => {
     const saved = await getActiveRepository().load()
@@ -276,6 +316,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   removeBusiness: async (businessId) => {
     const { businesses, activeBusinessId } = get()
     if (!businesses[businessId]) return
+    const role = getBusinessRole(businessId)
     const nextBusinesses = { ...businesses }
     delete nextBusinesses[businessId]
     const remainingIds = Object.keys(nextBusinesses)
@@ -288,6 +329,14 @@ export const useBusinessStore = create<Store>((set, get) => ({
       businessList: deriveBusinessList(nextBusinesses),
       ...deriveActiveFields(nextBusinesses, nextActiveId),
     })
+
+    if (role === 'member') {
+      // "Удалить" чужой бизнес участник не может (и не должен) — вместо этого он
+      // покидает команду: удаляется только его собственная строка членства.
+      await supabaseFinanceRepository.leaveBusiness(businessId)
+      return
+    }
+
     await persist(get)
   },
 
@@ -460,6 +509,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
       accessSettings: DEFAULT_ACCESS_SETTINGS,
+      myRole: null,
+      myAllowedDomains: [],
     })
   },
 }))

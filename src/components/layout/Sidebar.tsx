@@ -28,6 +28,7 @@ import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
 import { useBusinessStore } from '@/store/businessStore'
 import { useAccessGateStore } from '@/store/accessGateStore'
+import { isRouteUnlockedForMember } from '@/types/teamAccess'
 
 const NAV_ITEMS = [
   { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -54,9 +55,16 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const protectedRoutes = useBusinessStore((s) => s.accessSettings.protectedRoutes)
+  const myRole = useBusinessStore((s) => s.myRole)
+  const myAllowedDomains = useBusinessStore((s) => s.myAllowedDomains)
   const unlockedBy = useAccessGateStore((s) => s.unlockedBy)
   const unlockedRoutes = useAccessGateStore((s) => s.unlockedRoutes)
   const lock = useAccessGateStore((s) => s.lock)
+
+  // Участник команды видит в меню только разделы, которые ему реально открыты —
+  // сервер и так не отдаст туда данные, поэтому нет смысла показывать пункт, который
+  // при клике покажет "нет доступа". Настройки (управление доступом) — только владельцу.
+  const visibleItems = NAV_ITEMS.filter(({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains))
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
@@ -72,8 +80,8 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-3 space-y-1">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-          const isLocked = protectedRoutes.includes(to) && !unlockedRoutes.includes(to)
+        {visibleItems.map(({ to, label, icon: Icon }) => {
+          const isLocked = myRole === null && protectedRoutes.includes(to) && !unlockedRoutes.includes(to)
           return (
             <NavLink
               key={to}
@@ -96,7 +104,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 py-3 border-t border-ink-800 space-y-1">
-        {unlockedBy && (
+        {myRole === null && unlockedBy && (
           <button
             onClick={() => lock()}
             className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-warning-500 hover:bg-ink-900 transition-colors"

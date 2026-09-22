@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ImportPanel } from '@/features/import/ImportPanel'
+import { TeamAccessPanel } from '@/features/team/TeamAccessPanel'
 import { useBusinessStore } from '@/store/businessStore'
 import { useAuthStore } from '@/store/authStore'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
@@ -33,8 +34,14 @@ export function SettingsPage() {
   const authUser = useAuthStore((s) => s.user)
   const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
   const signOut = useAuthStore((s) => s.signOut)
+  const myRole = useBusinessStore((s) => s.myRole)
 
   if (!profile) return null
+
+  // Реальный командный доступ (свой логин у каждого сотрудника) заменяет PIN только
+  // для бизнесов в облаке, где текущий пользователь — владелец. В локальном/гостевом
+  // режиме нет backend, чтобы это проверять, поэтому там остаётся старый PIN-замок.
+  const hasCloudTeamAccess = cloudEnabled && authStatus === 'authenticated' && myRole === 'owner'
 
   const hasOtherBusinesses = businessList.length > 1
 
@@ -153,55 +160,60 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5">
-            <KeyRound className="size-4" /> Доступ по PIN-коду
-            <InfoTooltip>
-              Устройство и вход общие, но отдельные разделы можно закрыть PIN-ом — например, чтобы сотрудник за
-              кассой не видел Финансы или Настройки. Это ограничение «на бумаге»: PIN хранится вместе с данными
-              бизнеса без шифрования, так что не полагайтесь на него как на защиту от технически подкованного
-              человека — это про порядок в команде, не про безопасность уровня банка.
-            </InfoTooltip>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-2 space-y-5">
-          <div className="max-w-xs">
-            <Label htmlFor="owner-pin">Ваш PIN (открывает все защищённые разделы)</Label>
-            <Input
-              id="owner-pin"
-              inputMode="numeric"
-              placeholder="Например, 1234"
-              value={accessSettings.ownerPin ?? ''}
-              onChange={(e) => updateAccessSettings({ ownerPin: e.target.value.replace(/\D/g, '').slice(0, 6) || null })}
-              className="mt-2"
-            />
-          </div>
-
-          <div>
-            <Label>Какие разделы закрыть PIN-ом</Label>
-            <div className="mt-2 grid sm:grid-cols-2 gap-2">
-              {PROTECTABLE_ROUTES.map((route) => (
-                <label
-                  key={route.path}
-                  className="flex items-center gap-2.5 rounded-lg border border-ink-800 px-3 py-2 cursor-pointer hover:bg-ink-900"
-                >
-                  <Checkbox
-                    checked={accessSettings.protectedRoutes.includes(route.path)}
-                    onChange={() => toggleProtectedRoute(route.path)}
-                  />
-                  <span className="text-sm text-ink-200">{route.label}</span>
-                </label>
-              ))}
+      {hasCloudTeamAccess ? (
+        <TeamAccessPanel businessId={profile.id} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              <KeyRound className="size-4" /> Доступ по PIN-коду
+              <InfoTooltip>
+                Устройство и вход общие, но отдельные разделы можно закрыть PIN-ом — например, чтобы сотрудник за
+                кассой не видел Финансы или Настройки. Это ограничение «на бумаге»: PIN хранится вместе с данными
+                бизнеса без шифрования, так что не полагайтесь на него как на защиту от технически подкованного
+                человека — это про порядок в команде, не про безопасность уровня банка.
+                {cloudEnabled && ' Войдите в аккаунт, чтобы вместо PIN выдавать сотрудникам доступ по их собственному логину.'}
+              </InfoTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 space-y-5">
+            <div className="max-w-xs">
+              <Label htmlFor="owner-pin">Ваш PIN (открывает все защищённые разделы)</Label>
+              <Input
+                id="owner-pin"
+                inputMode="numeric"
+                placeholder="Например, 1234"
+                value={accessSettings.ownerPin ?? ''}
+                onChange={(e) => updateAccessSettings({ ownerPin: e.target.value.replace(/\D/g, '').slice(0, 6) || null })}
+                className="mt-2"
+              />
             </div>
-          </div>
 
-          <p className="text-xs text-ink-500">
-            Доступ конкретным сотрудникам к этим разделам выдаётся на странице «Сотрудники» — там же задаётся
-            персональный PIN каждого.
-          </p>
-        </CardContent>
-      </Card>
+            <div>
+              <Label>Какие разделы закрыть PIN-ом</Label>
+              <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                {PROTECTABLE_ROUTES.map((route) => (
+                  <label
+                    key={route.path}
+                    className="flex items-center gap-2.5 rounded-lg border border-ink-800 px-3 py-2 cursor-pointer hover:bg-ink-900"
+                  >
+                    <Checkbox
+                      checked={accessSettings.protectedRoutes.includes(route.path)}
+                      onChange={() => toggleProtectedRoute(route.path)}
+                    />
+                    <span className="text-sm text-ink-200">{route.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-xs text-ink-500">
+              Доступ конкретным сотрудникам к этим разделам выдаётся на странице «Сотрудники» — там же задаётся
+              персональный PIN каждого.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {cloudEnabled && (
         <Card>
