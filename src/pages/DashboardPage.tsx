@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useDiagnostics } from '@/hooks/useDiagnostics'
 import { formatCurrency, formatPercent } from '@/lib/utils'
@@ -19,6 +20,7 @@ import {
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
 import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import { calculateRunwayMonths } from '@/lib/finance/stressTest'
+import { calculateForecast, findCashFlowGap } from '@/lib/finance/forecast'
 import { BUSINESS_TYPE_KPI_PRIORITIES } from '@/lib/businessTypeKpis'
 
 export function DashboardPage() {
@@ -27,10 +29,17 @@ export function DashboardPage() {
   const profile = useBusinessStore((s) => s.profile)
   const history = useBusinessStore((s) => s.history)
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
+  const balanceSheet = useBusinessStore((s) => s.balanceSheet)
+  const forecastConfig = useBusinessStore((s) => s.forecastConfig)
 
   if (!inputs || !snapshot || !diagnostics || !profile) return null
 
   const cashBalance = cashFlowInputs ? buildCashFlowSummary(cashFlowInputs).closingBalance : 0
+  const forecastPoints = calculateForecast(inputs, forecastConfig, {
+    currentEmployeesCount: profile.employeesCount,
+    openingCash: balanceSheet?.currentAssets.cash ?? 0,
+  })
+  const cashFlowGap = findCashFlowGap(forecastPoints)
   const healthHeadline = {
     cashFlow: snapshot.cashFlow,
     safetyMarginPct: snapshot.safetyMarginPct,
@@ -64,6 +73,34 @@ export function DashboardPage() {
         <h1 className="text-2xl font-semibold text-ink-50">Dashboard</h1>
         <p className="text-sm text-ink-500 mt-1">{profile?.name} · итоги за период {inputs.period}</p>
       </div>
+
+      {cashFlowGap && (
+        <Card className="p-4 border-negative-500/30 bg-negative-500/10">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="size-5 text-negative-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-negative-500">
+                Риск кассового разрыва через {cashFlowGap.monthIndex + 1} мес. ({cashFlowGap.period})
+                <InfoTooltip>
+                  По прогнозу на 12 месяцев (текущие настройки роста, сезонности и остаток денег из
+                  Баланса) остаток денег уходит в минус — деньги закончатся, если ничего не изменить.
+                  Это предупреждение по текущим трендам, а не гарантия: не учитывает рост оборотного
+                  капитала при масштабировании и зависит от точности настроек прогноза.
+                </InfoTooltip>
+              </div>
+              <p className="text-sm text-ink-300 mt-1">
+                Не хватит примерно {formatCurrency(cashFlowGap.shortfall)}. Проверьте настройки в «Прогнозе» —
+                рост расходов, снижение выручки или сезонность могут этому способствовать.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="secondary" className="shrink-0">
+              <Link to="/app/forecast">
+                Открыть прогноз <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {isSelfEmployed && (
         <Card className="p-5">

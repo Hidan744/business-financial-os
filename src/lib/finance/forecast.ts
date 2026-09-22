@@ -91,3 +91,29 @@ export function calculateForecast(
 
   return points
 }
+
+export interface CashFlowGapWarning {
+  /** Индекс месяца в прогнозе (0 = первый месяц прогноза). */
+  monthIndex: number
+  /** Короткая подпись месяца, как на графике прогноза (напр. "Дек"). */
+  period: string
+  /** На сколько остаток денег уходит в минус в этом месяце (положительное число). */
+  shortfall: number
+}
+
+/**
+ * Первый месяц прогноза, в котором накопительный остаток денег (cashBalance) уходит в минус —
+ * то есть кассовый разрыв при сохранении текущих трендов (рост, сезонность, ставки прогноза),
+ * если ничего не изменить. null — если за весь горизонт прогноза остаток не уходит в минус.
+ * Не учитывает рост оборотного капитала при масштабировании бизнеса (см. calculateIncrementalWorkingCapital) —
+ * это предупреждение по трендам, а не точный прогноз.
+ */
+export function findCashFlowGap(points: MonthlyForecastPoint[]): CashFlowGapWarning | null {
+  const firstNegative = points.find((p) => p.cashBalance < 0)
+  if (!firstNegative) return null
+  return {
+    monthIndex: firstNegative.monthIndex,
+    period: firstNegative.label,
+    shortfall: -firstNegative.cashBalance,
+  }
+}

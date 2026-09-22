@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { FinancialInputs } from '@/types/finance'
-import { calculateAverageMonthlyGrowthRatePct, calculateForecast } from './forecast'
+import { calculateAverageMonthlyGrowthRatePct, calculateForecast, findCashFlowGap } from './forecast'
 import { DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
+import type { MonthlyForecastPoint } from '@/types/scenario'
 
 function makeInputs(): FinancialInputs {
   return {
@@ -88,6 +89,62 @@ describe('calculateForecast', () => {
   it('defaults openingCash to 0 when not provided', () => {
     const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG)
     expect(points[0].cashBalance).toBeCloseTo(points[0].cashFlow, 2)
+  })
+})
+
+describe('findCashFlowGap', () => {
+  function point(overrides: Partial<MonthlyForecastPoint> = {}): MonthlyForecastPoint {
+    return {
+      monthIndex: 0,
+      label: 'Янв',
+      revenue: 100000,
+      expenses: 80000,
+      netProfit: 20000,
+      cashFlow: 20000,
+      cashBalance: 20000,
+      ...overrides,
+    }
+  }
+
+  it('returns null when cash balance never goes negative', () => {
+    const points = [point({ monthIndex: 0, cashBalance: 10000 }), point({ monthIndex: 1, cashBalance: 5000 }), point({ monthIndex: 2, cashBalance: 15000 })]
+    expect(findCashFlowGap(points)).toBeNull()
+  })
+
+  it('returns null for an empty forecast', () => {
+    expect(findCashFlowGap([])).toBeNull()
+  })
+
+  it('finds the first month where cash balance goes negative, with a positive shortfall', () => {
+    const points = [
+      point({ monthIndex: 0, label: 'Янв', cashBalance: 50000 }),
+      point({ monthIndex: 1, label: 'Фев', cashBalance: 10000 }),
+      point({ monthIndex: 2, label: 'Мар', cashBalance: -30000 }),
+      point({ monthIndex: 3, label: 'Апр', cashBalance: -60000 }),
+    ]
+    const gap = findCashFlowGap(points)
+    expect(gap).not.toBeNull()
+    expect(gap?.monthIndex).toBe(2)
+    expect(gap?.period).toBe('Мар')
+    expect(gap?.shortfall).toBe(30000)
+  })
+
+  it('does not flag a month that recovers to positive after a temporary dip below zero elsewhere', () => {
+    // Only the FIRST negative month matters — once cash actually goes negative, everything
+    // after it is a moot point for "when do we run out of money", even if it later recovers.
+    const points = [
+      point({ monthIndex: 0, cashBalance: 5000 }),
+      point({ monthIndex: 1, cashBalance: -1000 }),
+      point({ monthIndex: 2, cashBalance: 8000 }),
+    ]
+    const gap = findCashFlowGap(points)
+    expect(gap?.monthIndex).toBe(1)
+    expect(gap?.shortfall).toBe(1000)
+  })
+
+  it('treats exactly zero cash balance as not a gap (only strictly negative counts)', () => {
+    const points = [point({ monthIndex: 0, cashBalance: 0 })]
+    expect(findCashFlowGap(points)).toBeNull()
   })
 })
 
