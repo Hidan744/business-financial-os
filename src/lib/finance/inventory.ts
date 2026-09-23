@@ -24,6 +24,13 @@ export function calculateStockOnHand(productId: string, movements: StockMovement
   return movements.filter((m) => m.productId === productId).reduce((sum, m) => sum + signedQuantity(m), 0)
 }
 
+/** Остаток товара на конкретную дату в прошлом — те же движения, но только по asOfDate включительно. */
+export function calculateStockOnHandAsOf(productId: string, movements: StockMovement[], asOfDate: string): number {
+  return movements
+    .filter((m) => m.productId === productId && m.date <= asOfDate)
+    .reduce((sum, m) => sum + signedQuantity(m), 0)
+}
+
 /** Оценка стоимости остатка на складе по текущей закупочной себестоимости товара. */
 export function calculateStockValue(onHand: number, costPerUnit: number): number {
   return onHand * costPerUnit
@@ -103,4 +110,79 @@ export function buildStockStatus(
   else if (belowMinimum || (runwayDays !== null && runwayDays <= lowRunwayDays)) level = 'low'
 
   return { productId: product.id, onHand, value, avgDailyOutflow, runwayDays, belowMinimum, level }
+}
+
+export interface PeriodMovementsSummary {
+  from: string
+  to: string
+  receiptsQty: number
+  receiptsValue: number
+  receiptsCount: number
+  salesQty: number
+  salesValue: number
+  salesCount: number
+  writeoffsQty: number
+  writeoffsValue: number
+  writeoffsCount: number
+  movementsCount: number
+  /** Чистое изменение остатка (в штуках) за период по всем товарам. */
+  netQtyChange: number
+  /** Чистое изменение стоимости склада за период (по себестоимости товара на момент движения). */
+  netValueChange: number
+}
+
+/**
+ * Сводка движений за период [from, to] (включительно, по строковым датам 'YYYY-MM-DD') —
+ * основа и для карточки «за день» (from === to), и для сравнения двух произвольных периодов.
+ * Стоимость движения — costPerUnit самого движения (если указан, напр. у прихода), иначе
+ * текущая себестоимость товара.
+ */
+export function summarizeMovementsInRange(
+  movements: StockMovement[],
+  products: Product[],
+  from: string,
+  to: string,
+): PeriodMovementsSummary {
+  const productById = new Map(products.map((p) => [p.id, p]))
+  const inRange = from <= to ? movements.filter((m) => m.date >= from && m.date <= to) : []
+
+  const summary: PeriodMovementsSummary = {
+    from,
+    to,
+    receiptsQty: 0,
+    receiptsValue: 0,
+    receiptsCount: 0,
+    salesQty: 0,
+    salesValue: 0,
+    salesCount: 0,
+    writeoffsQty: 0,
+    writeoffsValue: 0,
+    writeoffsCount: 0,
+    movementsCount: inRange.length,
+    netQtyChange: 0,
+    netValueChange: 0,
+  }
+
+  for (const m of inRange) {
+    const unitCost = m.costPerUnit ?? productById.get(m.productId)?.costPerUnit ?? 0
+    const value = m.quantity * unitCost
+    const signed = signedQuantity(m)
+    summary.netQtyChange += signed
+    summary.netValueChange += signed * unitCost
+    if (m.type === 'receipt') {
+      summary.receiptsQty += m.quantity
+      summary.receiptsValue += value
+      summary.receiptsCount += 1
+    } else if (m.type === 'sale') {
+      summary.salesQty += m.quantity
+      summary.salesValue += value
+      summary.salesCount += 1
+    } else if (m.type === 'writeoff') {
+      summary.writeoffsQty += m.quantity
+      summary.writeoffsValue += value
+      summary.writeoffsCount += 1
+    }
+  }
+
+  return summary
 }

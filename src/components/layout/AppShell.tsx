@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { MobileNav } from './MobileNav'
 import { RouteGate } from '@/components/access/RouteGate'
+import { DailyDigestModal } from '@/components/digest/DailyDigestModal'
 import { useBusinessStore } from '@/store/businessStore'
 
 export function AppShell() {
@@ -30,6 +31,7 @@ export function AppShell() {
           </RouteGate>
         </main>
       </div>
+      <DailyDigestModal />
     </div>
   )
 }

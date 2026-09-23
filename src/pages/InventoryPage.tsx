@@ -9,6 +9,7 @@ import { InfoTooltip } from '@/components/ui/tooltip'
 import { useBusinessStore } from '@/store/businessStore'
 import { buildStockStatus, type StockStatusLevel } from '@/lib/finance/inventory'
 import { STOCK_MOVEMENT_TYPE_LABELS, type StockMovementType } from '@/types/inventory'
+import { InventoryCalendarCard } from '@/features/inventory/InventoryCalendarCard'
 import { formatCurrency, cn } from '@/lib/utils'
 
 function today(): string {
@@ -315,6 +316,8 @@ export function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <InventoryCalendarCard products={products} stockMovements={stockMovements} />
     </div>
   )
 }

@@ -4,9 +4,11 @@ import {
   buildStockStatus,
   calculateAvgDailyOutflow,
   calculateStockOnHand,
+  calculateStockOnHandAsOf,
   calculateStockRunwayDays,
   calculateStockValue,
   signedQuantity,
+  summarizeMovementsInRange,
 } from './inventory'
 
 function movement(overrides: Partial<StockMovement> = {}): StockMovement {
@@ -157,5 +159,64 @@ describe('buildStockStatus', () => {
     expect(Number.isFinite(status.value)).toBe(true)
     expect(status.avgDailyOutflow).toBeNull()
     expect(status.runwayDays).toBeNull()
+  })
+})
+
+describe('calculateStockOnHandAsOf', () => {
+  it('only counts movements up to and including the given date', () => {
+    const movements: StockMovement[] = [
+      movement({ id: 'm1', type: 'receipt', date: '2026-09-01', quantity: 100 }),
+      movement({ id: 'm2', type: 'sale', date: '2026-09-05', quantity: 30 }),
+      movement({ id: 'm3', type: 'sale', date: '2026-09-08', quantity: 20 }),
+    ]
+    expect(calculateStockOnHandAsOf('p1', movements, '2026-09-04')).toBe(100)
+    expect(calculateStockOnHandAsOf('p1', movements, '2026-09-05')).toBe(70)
+    expect(calculateStockOnHandAsOf('p1', movements, '2026-09-10')).toBe(50)
+  })
+
+  it('matches calculateStockOnHand when asOfDate covers every movement', () => {
+    const movements: StockMovement[] = [movement({ type: 'receipt', date: '2026-09-01', quantity: 10 })]
+    expect(calculateStockOnHandAsOf('p1', movements, '2026-12-31')).toBe(calculateStockOnHand('p1', movements))
+  })
+})
+
+describe('summarizeMovementsInRange', () => {
+  it('sums quantity, value and count per movement type within the inclusive range', () => {
+    const movements: StockMovement[] = [
+      movement({ id: 'm1', type: 'receipt', date: '2026-09-05', quantity: 50, costPerUnit: 1000 }),
+      movement({ id: 'm2', type: 'sale', date: '2026-09-06', quantity: 10 }),
+      movement({ id: 'm3', type: 'sale', date: '2026-09-07', quantity: 5 }),
+      movement({ id: 'm4', type: 'writeoff', date: '2026-09-07', quantity: 2 }),
+      movement({ id: 'm5', type: 'receipt', date: '2026-09-10', quantity: 999 }), // outside range
+    ]
+    const summary = summarizeMovementsInRange(movements, [product({ costPerUnit: 1500 })], '2026-09-05', '2026-09-07')
+
+    expect(summary.receiptsQty).toBe(50)
+    expect(summary.receiptsValue).toBe(50000) // movement's own costPerUnit wins over product's
+    expect(summary.receiptsCount).toBe(1)
+    expect(summary.salesQty).toBe(15)
+    expect(summary.salesValue).toBe(15 * 1500) // falls back to product costPerUnit
+    expect(summary.salesCount).toBe(2)
+    expect(summary.writeoffsQty).toBe(2)
+    expect(summary.writeoffsCount).toBe(1)
+    expect(summary.movementsCount).toBe(4)
+    expect(summary.netQtyChange).toBe(50 - 10 - 5 - 2)
+  })
+
+  it('returns all zeros for an empty or inverted range', () => {
+    const movements: StockMovement[] = [movement({ type: 'receipt', date: '2026-09-05', quantity: 50 })]
+    const summary = summarizeMovementsInRange(movements, [product()], '2026-09-10', '2026-09-05')
+    expect(summary.movementsCount).toBe(0)
+    expect(summary.netQtyChange).toBe(0)
+  })
+
+  it('a single day is both from and to', () => {
+    const movements: StockMovement[] = [
+      movement({ id: 'm1', type: 'sale', date: '2026-09-06', quantity: 4 }),
+      movement({ id: 'm2', type: 'sale', date: '2026-09-07', quantity: 4 }),
+    ]
+    const summary = summarizeMovementsInRange(movements, [product()], '2026-09-06', '2026-09-06')
+    expect(summary.salesQty).toBe(4)
+    expect(summary.movementsCount).toBe(1)
   })
 })
