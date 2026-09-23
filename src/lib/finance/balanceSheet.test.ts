@@ -126,6 +126,33 @@ describe('calculateWorkingCapitalMetrics', () => {
     expect(metrics.dio).toBeNull()
     expect(metrics.cashConversionCycleDays).toBeNull()
   })
+
+  it('uses the average of beginning and ending balances when a previous period is given', () => {
+    // Ending: receivables 120000, payables 210000, inventory 180000 (same as the no-history case above).
+    // Beginning (previous period): receivables 80000, payables 190000, inventory 120000.
+    // Averages: receivables 100000, payables 200000, inventory 150000.
+    const metrics = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30, {
+      receivables: 80000,
+      payables: 190000,
+      inventory: 120000,
+    })
+    expect(metrics.dso).toBeCloseTo((100000 / 2400000) * 30, 5)
+    expect(metrics.dpo).toBeCloseTo((200000 / 720000) * 30, 5)
+    expect(metrics.dio).toBeCloseTo((150000 / 720000) * 30, 5)
+  })
+
+  it('falls back to the ending balance alone when no previous period is available (first period ever)', () => {
+    const withHistory = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30, {
+      receivables: 120000,
+      payables: 210000,
+      inventory: 180000,
+    })
+    const withoutHistory = calculateWorkingCapitalMetrics(120000, 210000, 180000, 2400000, 720000, 30)
+    // Previous == current here, so the average equals the ending balance either way.
+    expect(withoutHistory.dso).toBeCloseTo(withHistory.dso as number, 5)
+    expect(withoutHistory.dpo).toBeCloseTo(withHistory.dpo as number, 5)
+    expect(withoutHistory.dio).toBeCloseTo(withHistory.dio as number, 5)
+  })
 })
 
 describe('calculateIncrementalWorkingCapital', () => {

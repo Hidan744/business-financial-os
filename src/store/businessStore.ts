@@ -291,7 +291,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
     cashFlowInputs.operating.marketing = financialInputs.marketing
     cashFlowInputs.operating.taxes = financialInputs.taxes
     cashFlowInputs.operating.otherOperating =
-      financialInputs.logistics + financialInputs.utilities + financialInputs.software
+      financialInputs.logistics + financialInputs.utilities + financialInputs.software + (financialInputs.variableOpex ?? 0)
     cashFlowInputs.financing.loanRepaid = financialInputs.loanPayments
 
     const newBusiness: BusinessState = {

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
-import { getFixedCosts } from '@/lib/finance/snapshot'
+import { getFixedCosts, getVariableCosts } from '@/lib/finance/snapshot'
 import { calculateTaxForRegime } from '@/lib/finance/tax'
 import { TAX_REGIME_LABELS, type TaxRegime } from '@/types/tax'
 import { formatCurrency } from '@/lib/utils'
@@ -19,7 +19,7 @@ export function TaxesPage() {
 
   if (!inputs || !snapshot) return null
 
-  const expenses = inputs.cogs + getFixedCosts(inputs)
+  const expenses = getVariableCosts(inputs) + getFixedCosts(inputs)
   const result = calculateTaxForRegime(taxSettings.regime, taxSettings, {
     revenue: inputs.revenue,
     expenses,

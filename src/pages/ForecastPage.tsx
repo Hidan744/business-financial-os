@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { ParamSlider } from '@/features/simulator/ParamSlider'
 import { ForecastChart } from '@/features/forecast/ForecastChart'
@@ -129,6 +131,29 @@ export function ForecastPage() {
               step={1}
               onChange={(v) => setForecastConfig({ ...forecastConfig, employeesGrowth: v })}
             />
+            {balanceSheet && (
+              <div>
+                <Label htmlFor="monthly-capex" className="flex items-center gap-1.5">
+                  CAPEX в месяц, ₽
+                  <InfoTooltip>
+                    Покупка/ремонт оборудования и т.п. — постоянная сумма на весь горизонт прогноза. Уменьшает
+                    остаток денег каждый месяц и увеличивает основные средства в прогнозном балансе ниже, но не
+                    влияет на чистую прибыль напрямую — только амортизация (отдельное допущение) её снижает.
+                  </InfoTooltip>
+                </Label>
+                <Input
+                  id="monthly-capex"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={forecastConfig.monthlyCapex || ''}
+                  onChange={(e) => {
+                    const parsed = Number(e.target.value.replace(/\s/g, '').replace(',', '.'))
+                    setForecastConfig({ ...forecastConfig, monthlyCapex: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 })
+                  }}
+                  className="mt-2"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -169,6 +194,43 @@ export function ForecastPage() {
           )}
         </Card>
       )}
+
+      {lastPoint?.balanceSheet && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              Прогнозный баланс через 12 мес.
+              <InfoTooltip>
+                Основные средства катятся вперёд как CAPEX минус амортизация, долг — минус платежи по телу
+                кредита (из «Финансов»), капитал — как накопленная чистая прибыль. Проверка: Активы должны
+                сходиться с Обязательства + Капитал — если нет, где-то разошлись входные данные.
+              </InfoTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <ForecastBalanceTile label="Основные средства" value={formatCurrency(lastPoint.balanceSheet.fixedAssets)} />
+              <ForecastBalanceTile label="Остаток долга" value={formatCurrency(lastPoint.balanceSheet.debtBalance)} />
+              <ForecastBalanceTile label="Капитал" value={formatCurrency(lastPoint.balanceSheet.equity)} />
+              <ForecastBalanceTile
+                label="Баланс сходится?"
+                value={Math.abs(lastPoint.balanceSheet.identityGap) < 1 ? 'Да' : `Расхождение ${formatCurrency(lastPoint.balanceSheet.identityGap)}`}
+                accent={Math.abs(lastPoint.balanceSheet.identityGap) < 1 ? 'positive' : 'negative'}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function ForecastBalanceTile({ label, value, accent }: { label: string; value: string; accent?: 'positive' | 'negative' }) {
+  const color = accent === 'positive' ? 'text-positive-500' : accent === 'negative' ? 'text-negative-500' : 'text-ink-50'
+  return (
+    <div className="rounded-xl border border-ink-800 px-4 py-3">
+      <div className="text-xs text-ink-400 mb-1">{label}</div>
+      <div className={`text-lg font-semibold ${color}`}>{value}</div>
     </div>
   )
 }

@@ -44,7 +44,7 @@ export function SalesPage() {
     const fixedCosts = getFixedCosts(inputs)
     const variableCosts = getVariableCosts(inputs)
     const variableCostRatio = inputs.revenue > 0 ? variableCosts / inputs.revenue : 0
-    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
+    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, variableCosts)
     const fallbackTaxRatePctOfRevenue = inputs.revenue > 0 ? inputs.taxes / inputs.revenue : 0
 
     const solved = calculateRequiredRevenueForNetProfit(
@@ -85,7 +85,7 @@ export function SalesPage() {
     const annualInterest = inputs.loanInterest * MONTHS_PER_YEAR
     const variableCosts = getVariableCosts(inputs)
     const variableCostRatio = inputs.revenue > 0 ? variableCosts / inputs.revenue : 0
-    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
+    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, variableCosts)
     const fallbackTaxRatePctOfRevenue = inputs.revenue > 0 ? inputs.taxes / inputs.revenue : 0
 
     const solved = calculateRequiredRevenueForNetProfit(

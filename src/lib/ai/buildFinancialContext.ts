@@ -24,6 +24,8 @@ export interface FinancialContext {
     cogs: number
     grossProfit: number
     grossMarginPct: number
+    variableOpex: number
+    contributionProfit: number
     fixedCosts: number
     ebitda: number
     ebitdaMarginPct: number
@@ -115,6 +117,8 @@ export function buildFinancialContext(params: FinancialContextParams): Financial
       cogs: inputs.cogs,
       grossProfit: snapshot.grossProfit,
       grossMarginPct: snapshot.grossMarginPct,
+      variableOpex: inputs.variableOpex ?? 0,
+      contributionProfit: snapshot.contributionProfit,
       fixedCosts: snapshot.fixedCosts,
       ebitda: snapshot.ebitda,
       ebitdaMarginPct: snapshot.ebitdaMarginPct,

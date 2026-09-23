@@ -91,9 +91,20 @@ export interface WorkingCapitalMetrics {
   cashConversionCycleDays: number | null
 }
 
+export interface PreviousPeriodBalances {
+  receivables: number
+  payables: number
+  inventory: number
+}
+
 /**
  * daysInPeriod — длина периода, за который взяты revenue/cogs (30 для месяца).
  * revenue/cogs берутся за тот же период, что и остатки receivables/payables/inventory на конец периода.
+ *
+ * previous — остатки НА НАЧАЛО периода (т.е. на конец предыдущего периода). Если заданы, DSO/DPO/DIO
+ * считаются по среднему остатку (начало + конец)/2 — стандартная практика для оборачиваемости, точнее
+ * отражает типичный уровень остатка в течение периода, чем разовый снимок на конец. Без истории
+ * (первый период бизнеса в системе) используется остаток на конец периода — среднее посчитать не из чего.
  */
 export function calculateWorkingCapitalMetrics(
   receivables: number,
@@ -102,10 +113,15 @@ export function calculateWorkingCapitalMetrics(
   revenue: number,
   cogs: number,
   daysInPeriod = 30,
+  previous?: PreviousPeriodBalances,
 ): WorkingCapitalMetrics {
-  const dso = revenue > 0 ? (receivables / revenue) * daysInPeriod : null
-  const dpo = cogs > 0 ? (payables / cogs) * daysInPeriod : null
-  const dio = cogs > 0 ? (inventory / cogs) * daysInPeriod : null
+  const avgReceivables = previous ? (receivables + previous.receivables) / 2 : receivables
+  const avgPayables = previous ? (payables + previous.payables) / 2 : payables
+  const avgInventory = previous ? (inventory + previous.inventory) / 2 : inventory
+
+  const dso = revenue > 0 ? (avgReceivables / revenue) * daysInPeriod : null
+  const dpo = cogs > 0 ? (avgPayables / cogs) * daysInPeriod : null
+  const dio = cogs > 0 ? (avgInventory / cogs) * daysInPeriod : null
   const cashConversionCycleDays = dso !== null && dio !== null && dpo !== null ? dso + dio - dpo : null
 
   return { dso, dpo, dio, cashConversionCycleDays }

@@ -65,6 +65,12 @@ export interface ForecastConfig {
   marketingBudgetTrendPct: number // изменение рекламного бюджета в % в месяц
   avgCheckGrowthPct: number // рост среднего чека в % в месяц
   employeesGrowth: number // доп. сотрудников за 12 мес (равномерно распределяется на ФОТ)
+  /**
+   * CAPEX (покупка/ремонт оборудования и т.п.) в месяц — постоянная сумма на весь горизонт.
+   * Используется только когда в calculateForecast передан balanceSheet (иначе не от чего катить
+   * вперёд основные средства в прогнозном балансе) — см. MonthlyForecastPoint.balanceSheet.
+   */
+  monthlyCapex: number
 }
 
 export const DEFAULT_FORECAST_CONFIG: ForecastConfig = {
@@ -73,6 +79,32 @@ export const DEFAULT_FORECAST_CONFIG: ForecastConfig = {
   marketingBudgetTrendPct: 0,
   avgCheckGrowthPct: 0,
   employeesGrowth: 0,
+  monthlyCapex: 0,
+}
+
+/**
+ * Прогнозный баланс на конец месяца — driver-based проекция Assets/Liabilities/Equity, а не
+ * просто число на графике. Присутствует, только если в ForecastOptions передан balanceSheet
+ * (тот же триггер, что включает поправку на оборотный капитал) — без стартового баланса не от
+ * чего катить вперёд основные средства/долг/капитал.
+ */
+export interface MonthlyForecastBalanceSheet {
+  capex: number
+  fixedAssets: number
+  debtBalance: number
+  receivables: number
+  inventory: number
+  payables: number
+  /** Капитал = капитал на начало прогноза + накопленная чистая прибыль (нераспределённая прибыль). */
+  equity: number
+  totalAssets: number
+  totalLiabilities: number
+  /**
+   * totalAssets − totalLiabilities − equity. Математически должно быть ≈0 (с точностью до
+   * копейки) при согласованной прокатке P&L → Cash Flow → Balance Sheet — если тест на это
+   * когда-нибудь провалится, значит в одной из формул разошлась методика, а не "ну, бывает".
+   */
+  identityGap: number
 }
 
 export interface MonthlyForecastPoint {
@@ -85,4 +117,5 @@ export interface MonthlyForecastPoint {
   cashFlow: number
   /** Накопительный остаток денег на конец месяца = openingCash + сумма cashFlow с начала прогноза. */
   cashBalance: number
+  balanceSheet?: MonthlyForecastBalanceSheet
 }

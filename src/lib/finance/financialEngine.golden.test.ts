@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { BalanceSheetInputs, CashFlowInputs, FinancialInputs } from '@/types/finance'
-import { buildFinancialSnapshot } from './snapshot'
+import { buildFinancialSnapshot, getVariableCosts } from './snapshot'
 import { buildCashFlowSummary } from './cashflow'
 import { buildBalanceSheetSnapshot } from './balanceSheet'
 import { calculateForecast } from './forecast'
@@ -20,7 +20,7 @@ import { DEFAULT_TAX_SETTINGS } from '@/types/tax'
 const SCENARIO = {
   revenue: 5_000_000,
   cogs: 1_500_000,
-  variableOpex: 250_000, // modeled as part of "other" fixed-line costs in this app's current schema (see note below)
+  variableOpex: 250_000, // real FinancialInputs.variableOpex field — commissions/acquiring/delivery, distinct from COGS
   fixedCosts: 1_500_000,
   depreciation: 100_000,
   interest: 100_000,
@@ -39,16 +39,14 @@ function makeInputs(overrides: Partial<FinancialInputs> = {}): FinancialInputs {
     period: '2026-09',
     revenue: SCENARIO.revenue,
     cogs: SCENARIO.cogs,
+    variableOpex: SCENARIO.variableOpex,
     payroll: SCENARIO.fixedCosts * 0.6,
     rent: SCENARIO.fixedCosts * 0.2,
     marketing: SCENARIO.fixedCosts * 0.1,
     logistics: 0,
     utilities: 0,
     software: 0,
-    // This app's current schema has no separate "variable OPEX" line distinct from COGS (a
-    // known, reported architectural gap — see the audit report) — folded into fixed costs here
-    // so the scenario's total cost structure matches the spec, while staying inside the real schema.
-    customExpenseLines: [{ id: 'variable-opex', label: 'Переменные операционные расходы', amount: SCENARIO.fixedCosts * 0.1 + SCENARIO.variableOpex }],
+    customExpenseLines: [{ id: 'other-fixed', label: 'Прочие постоянные расходы', amount: SCENARIO.fixedCosts * 0.1 }],
     depreciation: SCENARIO.depreciation,
     loanInterest: SCENARIO.interest,
     taxes: (SCENARIO.revenue * SCENARIO.taxRatePct) / 100,
@@ -67,8 +65,12 @@ describe('Golden scenario: P&L is internally consistent (spec TEST 11)', () => {
     expect(snapshot.grossProfit).toBe(inputs.revenue - inputs.cogs)
   })
 
-  it('EBITDA = Gross Profit - Fixed Costs (this schema treats COGS as the only variable cost)', () => {
-    expect(snapshot.ebitda).toBeCloseTo(snapshot.grossProfit - snapshot.fixedCosts, 5)
+  it('Contribution Profit = Gross Profit - Variable OPEX', () => {
+    expect(snapshot.contributionProfit).toBeCloseTo(snapshot.grossProfit - SCENARIO.variableOpex, 5)
+  })
+
+  it('EBITDA = Contribution Profit - Fixed Costs', () => {
+    expect(snapshot.ebitda).toBeCloseTo(snapshot.contributionProfit - snapshot.fixedCosts, 5)
   })
 
   it('EBIT = EBITDA - Depreciation', () => {
@@ -83,6 +85,22 @@ describe('Golden scenario: P&L is internally consistent (spec TEST 11)', () => {
   it('Net Profit = EBT - Tax', () => {
     const ebt = snapshot.ebit - inputs.loanInterest
     expect(snapshot.netProfit).toBeCloseTo(ebt - inputs.taxes, 5)
+  })
+})
+
+describe('Golden scenario: Variable OPEX is a distinct variable cost, not folded into Fixed Costs or COGS', () => {
+  it('increasing variableOpex reduces Net Profit by exactly that amount, without changing Fixed Costs', () => {
+    const base = buildFinancialSnapshot(makeInputs({ variableOpex: 250_000 }))
+    const more = buildFinancialSnapshot(makeInputs({ variableOpex: 350_000 }))
+    expect(base.netProfit - more.netProfit).toBeCloseTo(100_000, 5)
+    expect(base.fixedCosts).toBeCloseTo(more.fixedCosts, 5)
+  })
+
+  it('variableOpex lowers contribution margin % and therefore raises Break-even Revenue', () => {
+    const withoutVarOpex = buildFinancialSnapshot(makeInputs({ variableOpex: 0 }))
+    const withVarOpex = buildFinancialSnapshot(makeInputs({ variableOpex: 250_000 }))
+    expect(withVarOpex.contributionMarginPct).toBeLessThan(withoutVarOpex.contributionMarginPct)
+    expect(withVarOpex.breakEvenRevenue).toBeGreaterThan(withoutVarOpex.breakEvenRevenue)
   })
 })
 
@@ -197,7 +215,7 @@ describe('Golden scenario: Financial Plan target is actually reached (spec §31.
 
     // Directly verify the solver's own guarantee: net profit at the solved revenue matches target.
     const fixedCosts = inputs.payroll + inputs.rent + inputs.marketing + inputs.customExpenseLines.reduce((s, l) => s + l.amount, 0)
-    const variableCostRatio = inputs.cogs / inputs.revenue
+    const variableCostRatio = getVariableCosts(inputs) / inputs.revenue
     const solved = calculateRequiredRevenueForNetProfit(
       targetAnnualNetProfit / 12,
       fixedCosts,

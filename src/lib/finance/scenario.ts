@@ -23,6 +23,9 @@ export function calculateScenario(
     salesCount,
     revenue,
     cogs: base.cogs * multipliers.cogs,
+    // Переменные опер. расходы масштабируются вместе с себестоимостью — своего множителя у
+    // variableOpex нет (сценарии сейчас двигают только COGS среди переменных затрат).
+    variableOpex: (base.variableOpex ?? 0) * multipliers.cogs,
     marketing: base.marketing * multipliers.marketing,
     payroll: base.payroll * multipliers.payroll,
     rent: base.rent * multipliers.rent,

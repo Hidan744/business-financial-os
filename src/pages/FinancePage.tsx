@@ -46,6 +46,28 @@ export function FinancePage() {
           />
           <PnLRow label="Валовая прибыль" value={snapshot.grossProfit} sign="=" kind="subtotal" />
 
+          <PnLRow
+            label="Переменные операционные расходы"
+            value={inputs.variableOpex ?? 0}
+            sign="-"
+            editable
+            onChange={(v) => updateFinancialInputs({ variableOpex: v })}
+            extra={
+              <InfoTooltip>
+                Расходы, которые растут вместе с объёмом продаж, но не входят в себестоимость: комиссии
+                маркетплейсов, эквайринг, доставка за единицу товара и т.п. В отличие от себестоимости — это
+                отдельная переменная статья, вычитается ПОСЛЕ валовой прибыли.
+              </InfoTooltip>
+            }
+          />
+          <PnLRow
+            label="Маржинальная прибыль"
+            value={snapshot.contributionProfit}
+            sign="="
+            kind="subtotal"
+            extra={<InfoTooltip>Валовая прибыль минус переменные операционные расходы — то, что остаётся на покрытие постоянных расходов.</InfoTooltip>}
+          />
+
           <PnLRow label="ФОТ" value={inputs.payroll} sign="-" editable onChange={(v) => updateFinancialInputs({ payroll: v })} />
           <PnLRow label="Аренда" value={inputs.rent} sign="-" editable onChange={(v) => updateFinancialInputs({ rent: v })} />
           {showMarketing && (

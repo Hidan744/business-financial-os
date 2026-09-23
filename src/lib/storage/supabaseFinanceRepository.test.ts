@@ -109,7 +109,7 @@ function makeBusiness(id: string, name: string): BusinessState {
       financing: { loanReceived: 0, loanRepaid: 0, ownerInvestment: 0, ownerWithdrawal: 0 },
     },
     scenarios: [],
-    forecastConfig: { salesCountGrowthPct: 0, seasonality: Array(12).fill(1), marketingBudgetTrendPct: 0, avgCheckGrowthPct: 0, employeesGrowth: 0 },
+    forecastConfig: { salesCountGrowthPct: 0, seasonality: Array(12).fill(1), marketingBudgetTrendPct: 0, avgCheckGrowthPct: 0, employeesGrowth: 0, monthlyCapex: 0 },
     aiHistory: [],
     onboardingComplete: true,
     history: [],

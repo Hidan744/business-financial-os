@@ -1,8 +1,8 @@
 import type { BalanceSheetInputs, FinancialInputs } from '@/types/finance'
-import type { ForecastConfig, MonthlyForecastPoint } from '@/types/scenario'
+import type { ForecastConfig, MonthlyForecastBalanceSheet, MonthlyForecastPoint } from '@/types/scenario'
 import type { TaxSettings } from '@/types/tax'
 import { buildFinancialSnapshot, getFixedCosts } from './snapshot'
-import { calculateIncrementalWorkingCapital, calculateWorkingCapitalMetrics } from './balanceSheet'
+import { buildBalanceSheetSnapshot, calculateIncrementalWorkingCapital, calculateWorkingCapitalMetrics } from './balanceSheet'
 import { estimateTaxForProjection } from './tax'
 
 const MONTH_LABELS = [
@@ -55,7 +55,11 @@ export function calculateForecast(
   const months = options.months ?? 12
   const startMonthIndex = options.startMonthIndex ?? new Date().getMonth()
   const currentEmployeesCount = Math.max(1, options.currentEmployeesCount ?? 1)
-  let runningCash = options.openingCash ?? 0
+  // Без явного openingCash, но с переданным balanceSheet — берём остаток денег оттуда
+  // (currentAssets.cash), а не 0: иначе прогнозный баланс расходится с фактическим стартовым
+  // балансом на ту же сумму денег, введённую в двух разных местах (см. reconcileCashWithBalanceSheet
+  // для того же принципа сверки в Cash Flow ↔ Баланс).
+  let runningCash = options.openingCash ?? options.balanceSheet?.currentAssets.cash ?? 0
 
   const points: MonthlyForecastPoint[] = []
   // Два НЕЗАВИСИМЫХ драйвера выручки — salesCountGrowthPct двигает только количество продаж,
@@ -68,6 +72,9 @@ export function calculateForecast(
   const checkGrowth = config.avgCheckGrowthPct / 100
   const costPerEmployee = base.payroll / currentEmployeesCount
   const cogsRatio = base.revenue > 0 ? base.cogs / base.revenue : 0
+  // Переменные операционные расходы (комиссии, эквайринг, доставка за ед.) масштабируются с
+  // выручкой тем же способом, что и COGS — та же логика "доля от выручки постоянна".
+  const variableOpexRatio = base.revenue > 0 ? (base.variableOpex ?? 0) / base.revenue : 0
   // Фоллбэк для налога, когда режим не передан — эффективная ставка ТЕКУЩЕГО периода от выручки,
   // а не замороженная сумма (см. estimateTaxForProjection / ForecastOptions.taxSettings).
   const fallbackTaxRatePctOfRevenue = base.revenue > 0 ? base.taxes / base.revenue : 0
@@ -84,6 +91,17 @@ export function calculateForecast(
   let prevRevenue = base.revenue
   let prevCogs = base.cogs
 
+  // Driver-based Balance Sheet projection — только если есть с чего катить вперёд. Основные
+  // средства и долг идут от факта (Баланс), капитал — от факта + накопленная прибыль вперёд
+  // (нераспределённая прибыль), дебиторка/запасы/кредиторка — от DSO/DIO/DPO текущего баланса,
+  // применённых к прогнозной выручке/себестоимости каждого месяца.
+  const monthlyCapex = options.balanceSheet ? (config.monthlyCapex ?? 0) : 0
+  let runningFixedAssets = options.balanceSheet?.nonCurrentAssets.fixedAssets ?? 0
+  let runningDebtBalance = options.balanceSheet
+    ? options.balanceSheet.currentLiabilities.shortTermDebt + options.balanceSheet.nonCurrentLiabilities.longTermDebt
+    : 0
+  let runningEquity = options.balanceSheet ? buildBalanceSheetSnapshot(options.balanceSheet).equity : 0
+
   for (let i = 0; i < months; i++) {
     const seasonIdx = (startMonthIndex + i) % 12
     const seasonality = config.seasonality[seasonIdx] ?? 1
@@ -92,6 +110,7 @@ export function calculateForecast(
     const salesCount = base.salesCount * growthFactor * seasonality
     const revenue = avgCheck * salesCount
     const cogs = cogsRatio * revenue
+    const variableOpex = variableOpexRatio * revenue
 
     const marketing = Math.max(0, base.marketing * Math.pow(1 + marketingTrend, i + 1))
     const additionalEmployees = config.employeesGrowth * ((i + 1) / months)
@@ -100,17 +119,17 @@ export function calculateForecast(
     // Налог не может остаться суммой текущего периода, скопированной в каждый месяц — иначе он
     // не реагирует на изменение выручки вовсе. EBIT для tax engine считается ДО налога (сам EBIT
     // от налога не зависит), поэтому его можно получить из "чернового" снэпшота с taxes=0.
-    const inputsBeforeTax: FinancialInputs = { ...base, revenue, avgCheck, salesCount, marketing, cogs, payroll, taxes: 0 }
+    const inputsBeforeTax: FinancialInputs = { ...base, revenue, avgCheck, salesCount, marketing, cogs, variableOpex, payroll, taxes: 0 }
     const fixedCosts = getFixedCosts(inputsBeforeTax)
     const draftSnapshot = buildFinancialSnapshot(inputsBeforeTax)
-    const projectedTax = estimateTaxForProjection(revenue, cogs + fixedCosts, draftSnapshot.ebit, {
+    const projectedTax = estimateTaxForProjection(revenue, cogs + variableOpex + fixedCosts, draftSnapshot.ebit, {
       taxSettings: options.taxSettings,
       fallbackRatePctOfRevenue: fallbackTaxRatePctOfRevenue,
     })
 
     const inputs: FinancialInputs = { ...inputsBeforeTax, taxes: projectedTax }
     const snapshot = buildFinancialSnapshot(inputs)
-    const expenses = inputs.cogs + fixedCosts + inputs.taxes + inputs.loanInterest
+    const expenses = inputs.cogs + variableOpex + fixedCosts + inputs.taxes + inputs.loanInterest
 
     // Прирост оборотного капитала (ΔAR + ΔInventory − ΔAP) месяц-к-месяцу — деньги, замороженные
     // в дебиторке и запасах при росте выручки, не то же самое, что прибыль (см. spec §17, §20).
@@ -119,10 +138,50 @@ export function calculateForecast(
       ? (calculateIncrementalWorkingCapital(prevRevenue, prevCogs, revenue, cogs, workingCapitalMetrics) ?? 0)
       : 0
 
-    const cashFlow = snapshot.cashFlow - incrementalWorkingCapital
+    // snapshot.cashFlow уже вычло ПОЛНЫЙ base.loanPayments (тело кредита) как отток — верно, пока
+    // долг ещё есть. Но если driver-based график (ниже) показывает, что долг уже погашен раньше,
+    // дальше платить нечего — иначе денежный поток продолжал бы "платить" по кредиту, которого
+    // больше нет, и баланс переставал бы сходиться (Cash уходит, а Долг уже 0 — фантомный отток).
+    const debtBalanceBeforePayment = runningDebtBalance
+    const actualPrincipalPaid = options.balanceSheet ? Math.min(base.loanPayments, debtBalanceBeforePayment) : base.loanPayments
+    const phantomLoanPaymentExcess = base.loanPayments - actualPrincipalPaid
+
+    const cashFlow = snapshot.cashFlow - incrementalWorkingCapital - monthlyCapex + phantomLoanPaymentExcess
     runningCash += cashFlow
     prevRevenue = revenue
     prevCogs = cogs
+
+    let balanceSheetPoint: MonthlyForecastBalanceSheet | undefined
+    if (options.balanceSheet) {
+      runningFixedAssets = Math.max(0, runningFixedAssets + monthlyCapex - base.depreciation)
+      runningDebtBalance = debtBalanceBeforePayment - actualPrincipalPaid
+      runningEquity += snapshot.netProfit
+
+      const receivables = workingCapitalMetrics && workingCapitalMetrics.dso !== null ? (revenue / 30) * workingCapitalMetrics.dso : 0
+      const inventory = workingCapitalMetrics && workingCapitalMetrics.dio !== null ? (cogs / 30) * workingCapitalMetrics.dio : 0
+      const payables = workingCapitalMetrics && workingCapitalMetrics.dpo !== null ? (cogs / 30) * workingCapitalMetrics.dpo : 0
+
+      const otherCurrentAssets = options.balanceSheet.currentAssets.other
+      const otherNonCurrentAssets = options.balanceSheet.nonCurrentAssets.other
+      const otherCurrentLiabilities = options.balanceSheet.currentLiabilities.other
+      const otherNonCurrentLiabilities = options.balanceSheet.nonCurrentLiabilities.other
+
+      const totalAssets = runningCash + receivables + inventory + otherCurrentAssets + runningFixedAssets + otherNonCurrentAssets
+      const totalLiabilities = payables + runningDebtBalance + otherCurrentLiabilities + otherNonCurrentLiabilities
+
+      balanceSheetPoint = {
+        capex: monthlyCapex,
+        fixedAssets: runningFixedAssets,
+        debtBalance: runningDebtBalance,
+        receivables,
+        inventory,
+        payables,
+        equity: runningEquity,
+        totalAssets,
+        totalLiabilities,
+        identityGap: totalAssets - totalLiabilities - runningEquity,
+      }
+    }
 
     points.push({
       monthIndex: i,
@@ -132,6 +191,7 @@ export function calculateForecast(
       netProfit: snapshot.netProfit,
       cashFlow,
       cashBalance: runningCash,
+      balanceSheet: balanceSheetPoint,
     })
   }
 

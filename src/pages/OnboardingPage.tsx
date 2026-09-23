@@ -23,6 +23,7 @@ interface FormData {
   modules: ModuleFlags
   revenue: string
   cogs: string
+  variableOpex: string
   fixedCosts: string
   payroll: string
   marketing: string
@@ -40,6 +41,7 @@ const INITIAL: FormData = {
   modules: BUSINESS_TYPE_MODULE_PRESETS.services,
   revenue: '',
   cogs: '',
+  variableOpex: '',
   fixedCosts: '',
   payroll: '',
   marketing: '',
@@ -73,6 +75,13 @@ const STEPS: StepDef[] = [
   },
   { key: 'revenue', title: 'Какая у вас выручка за период?', kind: 'number', suffix: '₽', hint: 'Все деньги, поступившие от продаж' },
   { key: 'cogs', title: 'Какая у вас себестоимость?', kind: 'number', suffix: '₽', hint: 'Прямые затраты на товар/услугу: закупка, материалы, производство' },
+  {
+    key: 'variableOpex',
+    title: 'Есть ли у вас переменные операционные расходы?',
+    kind: 'number',
+    suffix: '₽',
+    hint: 'Комиссии маркетплейсов, эквайринг, доставка за единицу товара — расходы, растущие вместе с продажами, но не входящие в себестоимость. Укажите 0, если таких нет.',
+  },
   { key: 'fixedCosts', title: 'Какие у вас постоянные расходы?', kind: 'number', suffix: '₽', hint: 'Аренда, коммуналка, сервисы — расходы, которые не зависят от объёма продаж' },
   { key: 'payroll', title: 'Какой у вас фонд оплаты труда (ФОТ)?', kind: 'number', suffix: '₽' },
   { key: 'marketing', title: 'Сколько вы тратите на рекламу?', kind: 'number', suffix: '₽' },
@@ -132,6 +141,7 @@ export function OnboardingPage() {
       period,
       revenue: toNumber(data.revenue),
       cogs: toNumber(data.cogs),
+      variableOpex: toNumber(data.variableOpex),
       payroll: toNumber(data.payroll),
       rent: 0,
       marketing: toNumber(data.marketing),

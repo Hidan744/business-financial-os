@@ -36,6 +36,14 @@ export function BalancePage() {
     balanceSheet.currentAssets.inventory,
     inputs.revenue,
     inputs.cogs,
+    30,
+    previousPeriod
+      ? {
+          receivables: previousPeriod.currentAssets.receivables,
+          payables: previousPeriod.currentLiabilities.payables,
+          inventory: previousPeriod.currentAssets.inventory,
+        }
+      : undefined,
   )
 
   function patchCurrentAssets(patch: Partial<BalanceSheetInputs['currentAssets']>) {

@@ -159,6 +159,7 @@ export function answerQuestion(
   if (q.includes('теря') && (q.includes('денег') || q.includes('деньг') || q.includes('прибыл'))) {
     const costs = [
       { label: 'Себестоимость', amount: inputs.cogs },
+      ...(inputs.variableOpex ? [{ label: 'Переменные операционные расходы', amount: inputs.variableOpex }] : []),
       { label: 'ФОТ', amount: inputs.payroll },
       { label: 'Реклама', amount: inputs.marketing },
       { label: 'Аренда', amount: inputs.rent },

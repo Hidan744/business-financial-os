@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FinancialInputs } from '@/types/finance'
-import { buildFinancialSnapshot, getFixedCosts } from './snapshot'
+import { buildFinancialSnapshot, getFixedCosts, getVariableCosts } from './snapshot'
 
 function makeInputs(overrides: Partial<FinancialInputs> = {}): FinancialInputs {
   return {
@@ -117,5 +117,33 @@ describe('buildFinancialSnapshot — edge cases', () => {
     const snapshot = buildFinancialSnapshot(makeInputs())
     expect(Number.isFinite(snapshot.marketingEfficiencyPct)).toBe(true)
     expect(snapshot.romiPct).toBeNull()
+  })
+})
+
+describe('getVariableCosts / variableOpex', () => {
+  it('getVariableCosts = cogs + variableOpex', () => {
+    expect(getVariableCosts(makeInputs({ variableOpex: 80000 }))).toBe(720000 + 80000)
+  })
+
+  it('is backward compatible: records without variableOpex read it as 0', () => {
+    const { variableOpex: _omit, ...withoutField } = makeInputs() as FinancialInputs & { variableOpex?: number }
+    expect(getVariableCosts(withoutField as FinancialInputs)).toBe(720000)
+  })
+
+  it('contributionProfit = grossProfit - variableOpex, and does not affect fixedCosts', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs({ variableOpex: 80000 }))
+    expect(snapshot.contributionProfit).toBe(snapshot.grossProfit - 80000)
+    expect(snapshot.fixedCosts).toBe(getFixedCosts(makeInputs({ variableOpex: 80000 })))
+  })
+
+  it('ebitda = contributionProfit - fixedCosts (variableOpex sits between Gross Profit and EBITDA)', () => {
+    const snapshot = buildFinancialSnapshot(makeInputs({ variableOpex: 80000 }))
+    expect(snapshot.ebitda).toBeCloseTo(snapshot.contributionProfit - snapshot.fixedCosts, 5)
+  })
+
+  it('variableOpex reduces cash flow by the same amount (it is a real cash cost)', () => {
+    const without = buildFinancialSnapshot(makeInputs({ variableOpex: 0 }))
+    const withOpex = buildFinancialSnapshot(makeInputs({ variableOpex: 80000 }))
+    expect(without.cashFlow - withOpex.cashFlow).toBeCloseTo(80000, 5)
   })
 })

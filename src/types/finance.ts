@@ -10,6 +10,14 @@ export interface FinancialInputs {
   period: string // '2026-09'
   revenue: number
   cogs: number // себестоимость (переменные затраты)
+  /**
+   * Переменные операционные расходы, помимо себестоимости — комиссии маркетплейсов, эквайринг,
+   * доставка за единицу и т.п. Растут вместе с объёмом продаж, но это не себестоимость товара/
+   * услуги (COGS), а отдельная переменная статья — в P&L идёт после Валовой прибыли, образуя
+   * Маржинальную прибыль (Contribution Profit), и снижает Точку безубыточности/маржинальность.
+   * Опционально — старые записи без этого поля читаются как 0 (см. getVariableCosts).
+   */
+  variableOpex?: number
   payroll: number // ФОТ
   rent: number
   marketing: number
@@ -99,6 +107,8 @@ export interface FinancialSnapshot {
   cogs: number
   grossProfit: number
   grossMarginPct: number
+  /** Валовая прибыль минус переменные операционные расходы (variableOpex) — то, что остаётся на покрытие постоянных расходов. */
+  contributionProfit: number
   fixedCosts: number
   variableCosts: number
   ebitda: number

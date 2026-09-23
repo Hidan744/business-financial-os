@@ -48,18 +48,21 @@ export function getFixedCosts(inputs: FinancialInputs): number {
   )
 }
 
+/** Переменные затраты = себестоимость + переменные операционные расходы (комиссии, эквайринг, доставка за ед.). */
 export function getVariableCosts(inputs: FinancialInputs): number {
-  return inputs.cogs
+  return inputs.cogs + (inputs.variableOpex ?? 0)
 }
 
 export function buildFinancialSnapshot(inputs: FinancialInputs, context: SnapshotContext = {}): FinancialSnapshot {
   const grossProfit = calculateGrossProfit(inputs.revenue, inputs.cogs)
   const grossMarginPct = calculateGrossMargin(grossProfit, inputs.revenue) ?? 0
 
+  const contributionProfit = grossProfit - (inputs.variableOpex ?? 0)
   const fixedCosts = getFixedCosts(inputs)
   const variableCosts = getVariableCosts(inputs)
 
-  const ebitda = calculateEBITDA(grossProfit, fixedCosts)
+  // EBITDA = Валовая прибыль − Переменные опер. расходы − Постоянные расходы (Contribution Profit − Fixed Costs).
+  const ebitda = calculateEBITDA(contributionProfit, fixedCosts)
   const ebitdaMarginPct = calculateEBITDAMargin(ebitda, inputs.revenue) ?? 0
 
   const ebit = calculateEBIT(ebitda, inputs.depreciation)
@@ -74,7 +77,7 @@ export function buildFinancialSnapshot(inputs: FinancialInputs, context: Snapsho
   const safetyMarginPct = calculateSafetyMarginPct(inputs.revenue, breakEvenRevenue) ?? 0
 
   const totalCashOut =
-    inputs.cogs + fixedCosts + inputs.taxes + inputs.loanInterest + inputs.loanPayments
+    inputs.cogs + (inputs.variableOpex ?? 0) + fixedCosts + inputs.taxes + inputs.loanInterest + inputs.loanPayments
   const cashFlow = inputs.revenue - totalCashOut
 
   const marketingEfficiencyPct = calculateMarketingEfficiencyPct(inputs.revenue, inputs.marketing) ?? 0
@@ -99,6 +102,7 @@ export function buildFinancialSnapshot(inputs: FinancialInputs, context: Snapsho
     cogs: inputs.cogs,
     grossProfit,
     grossMarginPct,
+    contributionProfit,
     fixedCosts,
     variableCosts,
     ebitda,
