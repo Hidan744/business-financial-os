@@ -67,6 +67,8 @@ function makeLegacyBusinessState(): BusinessState {
       patentAnnualCost: 0,
     },
     accessSettings: { protectedRoutes: [], ownerPin: null },
+    products: [],
+    stockMovements: [],
     onboardingComplete: true,
   }
 }

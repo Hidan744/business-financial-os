@@ -7,6 +7,7 @@ import type { Goal } from '@/types/goal'
 import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 import type { TaxSettings } from '@/types/tax'
 import type { AccessSettings } from '@/types/access'
+import type { Product, StockMovement } from '@/types/inventory'
 
 export interface BusinessState {
   profile: BusinessProfile
@@ -36,6 +37,10 @@ export interface BusinessState {
   taxSettings: TaxSettings
   /** Ограничение доступа к разделам по PIN-коду (владелец + сотрудники). */
   accessSettings: AccessSettings
+  /** Товары (SKU) склада. */
+  products: Product[]
+  /** Движения товаров (приход/продажа/списание/корректировка) — остаток считается по ним, не вводится вручную. */
+  stockMovements: StockMovement[]
 }
 
 /** Несколько бизнесов пользователя + указатель на активный. */

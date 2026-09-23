@@ -22,6 +22,7 @@ import {
   Home,
   Lock,
   LockOpen,
+  Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/icons/BrandMark'
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },
   { to: '/app/debts', label: 'Долги', icon: Landmark },
   { to: '/app/hr', label: 'Сотрудники', icon: Users },
+  { to: '/app/inventory', label: 'Склад', icon: Package },
   { to: '/app/goals', label: 'Цели', icon: Flag },
   { to: '/app/unit-economics', label: 'Unit-экономика', icon: Calculator },
   { to: '/app/report', label: 'Отчёт', icon: FileText },

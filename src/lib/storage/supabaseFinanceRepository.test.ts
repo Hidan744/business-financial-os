@@ -136,6 +136,8 @@ function makeBusiness(id: string, name: string): BusinessState {
       patentAnnualCost: 0,
     },
     accessSettings: { protectedRoutes: [], ownerPin: null },
+    products: [],
+    stockMovements: [],
   }
 }
 

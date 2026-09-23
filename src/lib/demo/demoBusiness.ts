@@ -1,5 +1,6 @@
 import type { BusinessState } from '@/lib/storage/repository'
 import type { FinancialInputs } from '@/types/finance'
+import type { Product, StockMovement } from '@/types/inventory'
 import { DEFAULT_FORECAST_CONFIG, STANDARD_SCENARIOS } from '@/types/scenario'
 
 const CURRENT_PERIOD = new Date().toISOString().slice(0, 7)
@@ -12,6 +13,14 @@ function shiftPeriod(period: string, monthsBack: number): string {
   const [year, month] = period.split('-').map(Number)
   const date = new Date(Date.UTC(year, month - 1 - monthsBack, 1))
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/** Дата N дней назад от сейчас — в отличие от периодов (месяц), движения склада привязаны
+ * к реальным дням, чтобы демо оставалось живым (внутри окна расчёта расхода), когда бы его ни открыли. */
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
 }
 
 /**
@@ -205,5 +214,41 @@ export function createDemoBusiness(): BusinessState {
       protectedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report'],
       ownerPin: '1234',
     },
+    // Остаток считается по движениям, а не задаётся числом — специально оставлены все три
+    // статуса сразу (ok/low/critical), чтобы страница «Склад» сразу показывала себя в деле:
+    // футболки уже распроданы (0 на складе), худи серое и шапки — ниже порога, зимняя куртка —
+    // залежавшийся товар прошлого сезона (тот самый «замороженный в запасах» капитал с Баланса).
+    products: DEMO_PRODUCTS,
+    stockMovements: DEMO_STOCK_MOVEMENTS,
   }
 }
+
+const DEMO_PRODUCTS: Product[] = [
+  { id: 'prod1', name: 'Худи чёрное', sku: 'HD-001', unit: 'шт', minStockLevel: 30, costPerUnit: 1800 },
+  { id: 'prod2', name: 'Худи серое', sku: 'HD-002', unit: 'шт', minStockLevel: 30, costPerUnit: 1800 },
+  { id: 'prod3', name: 'Футболка базовая', sku: 'TS-010', unit: 'шт', minStockLevel: 50, costPerUnit: 900 },
+  { id: 'prod4', name: 'Куртка зимняя (прошлый сезон)', sku: 'JK-005', unit: 'шт', minStockLevel: 10, costPerUnit: 4500 },
+  { id: 'prod5', name: 'Шапка вязаная', sku: 'CP-020', unit: 'шт', minStockLevel: 40, costPerUnit: 650 },
+]
+
+const DEMO_STOCK_MOVEMENTS: StockMovement[] = [
+  // Худи чёрное — остаток 50 шт, продажи ровные, статус ok
+  { id: 'stk1', productId: 'prod1', date: daysAgo(45), type: 'receipt', quantity: 200, costPerUnit: 1800, note: 'Пошив партии' },
+  { id: 'stk2', productId: 'prod1', date: daysAgo(20), type: 'sale', quantity: 90 },
+  { id: 'stk3', productId: 'prod1', date: daysAgo(5), type: 'sale', quantity: 60 },
+  // Худи серое — остаток 15 шт при пороге 30, статус low
+  { id: 'stk4', productId: 'prod2', date: daysAgo(45), type: 'receipt', quantity: 100, costPerUnit: 1800, note: 'Пошив партии' },
+  { id: 'stk5', productId: 'prod2', date: daysAgo(18), type: 'sale', quantity: 50 },
+  { id: 'stk6', productId: 'prod2', date: daysAgo(6), type: 'sale', quantity: 35 },
+  // Футболка базовая — распродана, остаток 0, статус critical
+  { id: 'stk7', productId: 'prod3', date: daysAgo(60), type: 'receipt', quantity: 120, costPerUnit: 900, note: 'Пошив партии' },
+  { id: 'stk8', productId: 'prod3', date: daysAgo(19), type: 'sale', quantity: 70 },
+  { id: 'stk9', productId: 'prod3', date: daysAgo(3), type: 'sale', quantity: 50 },
+  // Куртка зимняя — 135 шт залежались, продаётся медленно, статус ok (но деньги заморожены)
+  { id: 'stk10', productId: 'prod4', date: daysAgo(90), type: 'receipt', quantity: 150, costPerUnit: 4500, note: 'Закупка на сезон' },
+  { id: 'stk11', productId: 'prod4', date: daysAgo(15), type: 'sale', quantity: 15 },
+  // Шапка вязаная — остаток 25 шт при пороге 40, статус low
+  { id: 'stk12', productId: 'prod5', date: daysAgo(40), type: 'receipt', quantity: 80, costPerUnit: 650, note: 'Пошив партии' },
+  { id: 'stk13', productId: 'prod5', date: daysAgo(17), type: 'sale', quantity: 30 },
+  { id: 'stk14', productId: 'prod5', date: daysAgo(4), type: 'sale', quantity: 25 },
+]

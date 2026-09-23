@@ -27,6 +27,7 @@
 --   goals          -> goals
 --   unitEconomics  -> unitEconomics
 --   aiCfo          -> aiHistory
+--   inventory      -> products, stockMovements
 -- Всегда отдаются без домена (не содержат чувствительных финансовых данных):
 --   profile, scenarios, onboardingComplete
 
@@ -228,6 +229,12 @@ begin
   if 'aiCfo' = any(v_domains) then
     v_result := v_result || jsonb_build_object('aiHistory', coalesce(v_data->'aiHistory', '[]'::jsonb));
   end if;
+  if 'inventory' = any(v_domains) then
+    v_result := v_result || jsonb_build_object(
+      'products', coalesce(v_data->'products', '[]'::jsonb),
+      'stockMovements', coalesce(v_data->'stockMovements', '[]'::jsonb)
+    );
+  end if;
 
   return v_result;
 end;
@@ -293,6 +300,8 @@ begin
     when 'goals' then 'goals'
     when 'unitEconomics' then 'unitEconomics'
     when 'aiHistory' then 'aiCfo'
+    when 'products' then 'inventory'
+    when 'stockMovements' then 'inventory'
     else null
   end;
 

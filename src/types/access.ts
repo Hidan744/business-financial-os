@@ -31,6 +31,7 @@ export const PROTECTABLE_ROUTES: { path: string; label: string }[] = [
   { path: '/app/stress-test', label: 'Стресс-тест' },
   { path: '/app/debts', label: 'Долги' },
   { path: '/app/hr', label: 'Сотрудники' },
+  { path: '/app/inventory', label: 'Склад' },
   { path: '/app/goals', label: 'Цели' },
   { path: '/app/unit-economics', label: 'Unit-экономика' },
   { path: '/app/report', label: 'Отчёт' },

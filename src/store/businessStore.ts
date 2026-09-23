@@ -10,6 +10,7 @@ import type { TaxSettings } from '@/types/tax'
 import { DEFAULT_TAX_SETTINGS } from '@/types/tax'
 import type { AccessSettings } from '@/types/access'
 import { DEFAULT_ACCESS_SETTINGS } from '@/types/access'
+import type { Product, StockMovement } from '@/types/inventory'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
@@ -43,6 +44,8 @@ interface Store {
   unitEconomics: UnitEconomicsAssumptions
   taxSettings: TaxSettings
   accessSettings: AccessSettings
+  products: Product[]
+  stockMovements: StockMovement[]
   /**
    * Роль текущего пользователя в активном бизнесе (только для Supabase-бизнесов —
    * null в гостевом/локальном режиме, там реальной multi-user модели нет).
@@ -87,6 +90,11 @@ interface Store {
   updateUnitEconomics: (patch: Partial<UnitEconomicsAssumptions>) => Promise<void>
   updateTaxSettings: (patch: Partial<TaxSettings>) => Promise<void>
   updateAccessSettings: (patch: Partial<AccessSettings>) => Promise<void>
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>
+  updateProduct: (id: string, patch: Partial<Omit<Product, 'id'>>) => Promise<void>
+  removeProduct: (id: string) => Promise<void>
+  addStockMovement: (movement: Omit<StockMovement, 'id'>) => Promise<void>
+  removeStockMovement: (id: string) => Promise<void>
   resetAll: () => Promise<void>
 }
 
@@ -152,6 +160,8 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     unitEconomics: active?.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: active?.taxSettings ?? DEFAULT_TAX_SETTINGS,
     accessSettings: active?.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
+    products: active?.products ?? [],
+    stockMovements: active?.stockMovements ?? [],
     myRole: activeBusinessId ? getBusinessRole(activeBusinessId) : null,
     myAllowedDomains: activeBusinessId ? getMyAllowedDomains(activeBusinessId) : [],
   }
@@ -191,6 +201,8 @@ async function mutateActiveBusiness(
     unitEconomics: current.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: current.taxSettings ?? DEFAULT_TAX_SETTINGS,
     accessSettings: current.accessSettings ?? DEFAULT_ACCESS_SETTINGS,
+    products: current.products ?? [],
+    stockMovements: current.stockMovements ?? [],
   }
   const updated = updater(normalized)
   const nextBusinesses = { ...businesses, [activeBusinessId]: updated }
@@ -236,6 +248,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
   unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   taxSettings: DEFAULT_TAX_SETTINGS,
   accessSettings: DEFAULT_ACCESS_SETTINGS,
+  products: [],
+  stockMovements: [],
   myRole: null,
   myAllowedDomains: [],
 
@@ -298,6 +312,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
       accessSettings: DEFAULT_ACCESS_SETTINGS,
+      products: [],
+      stockMovements: [],
     }
 
     const businesses = { ...get().businesses, [profile.id]: newBusiness }
@@ -498,6 +514,38 @@ export const useBusinessStore = create<Store>((set, get) => ({
     await mutateActiveBusiness(get, set, (b) => ({ ...b, accessSettings: { ...b.accessSettings, ...patch } }))
   },
 
+  addProduct: async (product) => {
+    const newProduct = { ...product, id: generateId('prod') }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, products: [...b.products, newProduct] }))
+  },
+
+  updateProduct: async (id, patch) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      products: b.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    }))
+  },
+
+  removeProduct: async (id) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      products: b.products.filter((p) => p.id !== id),
+      stockMovements: b.stockMovements.filter((m) => m.productId !== id),
+    }))
+  },
+
+  addStockMovement: async (movement) => {
+    const newMovement = { ...movement, id: generateId('stk') }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, stockMovements: [...b.stockMovements, newMovement] }))
+  },
+
+  removeStockMovement: async (id) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      stockMovements: b.stockMovements.filter((m) => m.id !== id),
+    }))
+  },
+
   resetAll: async () => {
     await getActiveRepository().clear()
     set({
@@ -521,6 +569,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
       accessSettings: DEFAULT_ACCESS_SETTINGS,
+      products: [],
+      stockMovements: [],
       myRole: null,
       myAllowedDomains: [],
     })

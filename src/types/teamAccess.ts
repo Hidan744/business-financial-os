@@ -14,6 +14,7 @@ export type TeamDomain =
   | 'goals'
   | 'unitEconomics'
   | 'aiCfo'
+  | 'inventory'
 
 export const TEAM_DOMAIN_LABELS: Record<TeamDomain, string> = {
   finance: 'Финансы (P&L, история, план/факт)',
@@ -25,6 +26,7 @@ export const TEAM_DOMAIN_LABELS: Record<TeamDomain, string> = {
   goals: 'Цели',
   unitEconomics: 'Unit-экономика',
   aiCfo: 'AI CFO (история переписки)',
+  inventory: 'Склад (товары и остатки)',
 }
 
 export const ALL_TEAM_DOMAINS = Object.keys(TEAM_DOMAIN_LABELS) as TeamDomain[]
@@ -43,6 +45,7 @@ export const DOMAIN_KEYS: Record<TeamDomain, string[]> = {
   goals: ['goals'],
   unitEconomics: ['unitEconomics'],
   aiCfo: ['aiHistory'],
+  inventory: ['products', 'stockMovements'],
 }
 
 /**
@@ -71,6 +74,7 @@ export const ROUTE_REQUIRED_DOMAINS: Record<string, TeamDomain[]> = {
   '/app/goals': ['goals'],
   '/app/unit-economics': ['finance', 'unitEconomics'],
   '/app/report': ['finance'],
+  '/app/inventory': ['inventory'],
 }
 
 /**
