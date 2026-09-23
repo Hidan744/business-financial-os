@@ -1,9 +1,9 @@
 import type { FinancialInputs, FinancialSnapshot } from '@/types/finance'
 import type { DiagnosticResult } from '@/types/diagnostics'
-import { calculateRequiredRevenue, calculateRequiredSales } from '@/lib/finance/breakeven'
-import { calculateContributionMarginPct } from '@/lib/finance/formulas'
+import type { TaxSettings } from '@/types/tax'
+import { calculateRequiredRevenueForNetProfit } from '@/lib/finance/breakeven'
 import { calculateScenario } from '@/lib/finance/scenario'
-import { buildFinancialSnapshot, getFixedCosts } from '@/lib/finance/snapshot'
+import { buildFinancialSnapshot, getFixedCosts, getVariableCosts } from '@/lib/finance/snapshot'
 import { DEFAULT_MULTIPLIERS } from '@/types/scenario'
 import { formatCurrency, formatPercent } from '@/lib/utils'
 
@@ -44,35 +44,50 @@ export function answerQuestion(
   snapshot: FinancialSnapshot,
   diagnostics: DiagnosticResult,
   employeesCount: number,
+  taxSettings?: TaxSettings,
 ): AiResult {
   const q = norm(question)
   const fixedCosts = getFixedCosts(inputs)
 
-  // 1. "Какую выручку нужно сделать для прибыли X?"
+  // 1. "Какую выручку нужно сделать для прибыли X?" — target здесь означает ЧИСТУЮ прибыль
+  // ("для прибыли", "чистыми"), поэтому считается через тот же решатель (с учётом амортизации,
+  // процентов и налога — через реальный tax engine), что использует Financial Plan и Продажи —
+  // единый Financial Engine, а не отдельная приблизительная формула для AI CFO.
   if ((q.includes('выручк') || q.includes('заработ')) && (q.includes('прибыл') || q.includes('чист')) ) {
     const target = extractNumber(question)
     if (target === null) {
       return { missingData: ['Целевая сумма прибыли (укажите число, например «500000»)'] }
     }
-    const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
-    const requiredRevenue = calculateRequiredRevenue(target, fixedCosts, contributionMarginPct)
-    const requiredSales = calculateRequiredSales(requiredRevenue, inputs.avgCheck)
+    const variableCosts = getVariableCosts(inputs)
+    const variableCostRatio = inputs.revenue > 0 ? variableCosts / inputs.revenue : 0
+    const fallbackRatePctOfRevenue = inputs.revenue > 0 ? inputs.taxes / inputs.revenue : 0
+    const solved = calculateRequiredRevenueForNetProfit(
+      target,
+      fixedCosts,
+      variableCostRatio,
+      inputs.depreciation,
+      inputs.loanInterest,
+      inputs.avgCheck,
+      { taxSettings, fallbackRatePctOfRevenue },
+    )
+    const requiredRevenue = solved.requiredRevenue
+    const requiredSales = solved.requiredSales
     if (requiredRevenue === null) {
       return {
         answer: {
-          shortAnswer: 'При текущей марже эта цель недостижима через рост продаж.',
-          why: 'Маржинальность (доля выручки, покрывающая постоянные расходы) сейчас равна нулю или отрицательна.',
-          calculation: `Маржинальность = (Выручка − Себестоимость) / Выручка = ${formatPercent((contributionMarginPct ?? 0) * 100)}`,
+          shortAnswer: 'Недостижимо ни при какой выручке.',
+          why: 'Переменные затраты (себестоимость и переменные расходы) съедают всю выручку — маржинальность сейчас ≤ 0, и рост продаж это не исправит.',
+          calculation: `Маржинальность = 1 − (переменные затраты / выручка) = ${formatPercent((1 - variableCostRatio) * 100)}`,
           whatToDo: 'Сначала нужно повысить маржинальность: поднять цены или снизить себестоимость, прежде чем считать целевую выручку.',
-          whatChanges: 'Без роста маржи увеличение продаж не приведёт к прибыли.',
+          whatChanges: 'Без положительной маржи увеличение продаж не приведёт к прибыли.',
         },
       }
     }
     return {
       answer: {
-        shortAnswer: `Для прибыли ${formatCurrency(target)} нужна выручка ≈ ${formatCurrency(requiredRevenue)}.`,
-        why: 'Выручка должна покрыть постоянные расходы и обеспечить целевую прибыль сверх переменных затрат.',
-        calculation: `Необходимая выручка = (Целевая прибыль + Постоянные расходы) / Маржинальность = (${formatCurrency(target)} + ${formatCurrency(fixedCosts)}) / ${formatPercent((contributionMarginPct ?? 0) * 100)} ≈ ${formatCurrency(requiredRevenue)}`,
+        shortAnswer: `Для чистой прибыли ${formatCurrency(target)} нужна выручка ≈ ${formatCurrency(requiredRevenue)}.`,
+        why: 'Выручка должна покрыть переменные затраты, постоянные расходы, амортизацию, проценты по кредиту и налог — и оставить целевую чистую прибыль сверх этого.',
+        calculation: `Выручка подобрана так, чтобы по полному П&Л (Выручка → Валовая прибыль → EBITDA → EBIT → EBT → Налог → Чистая прибыль) итоговая чистая прибыль ≈ ${formatCurrency(target)}.`,
         whatToDo: requiredSales !== null
           ? `Это примерно ${Math.round(requiredSales)} продаж при среднем чеке ${formatCurrency(inputs.avgCheck)}.`
           : 'Задайте средний чек, чтобы рассчитать количество продаж.',

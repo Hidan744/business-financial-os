@@ -61,6 +61,7 @@ export function SimulatorPage() {
   const { inputs } = useFinancials()
   const profile = useBusinessStore((s) => s.profile)
   const forecastConfig = useBusinessStore((s) => s.forecastConfig)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
   const [pct, setPct] = useState<PctState>(ZERO_PCT)
   const [loanEnabled, setLoanEnabled] = useState(false)
   const [loanAmount, setLoanAmount] = useState(DEFAULT_LOAN_AMOUNT)
@@ -93,8 +94,8 @@ export function SimulatorPage() {
   const yearImpact = useMemo(() => {
     if (!inputs || !scenarioAfterInputs) return null
     const currentEmployeesCount = profile?.employeesCount ?? 1
-    const beforePoints = calculateForecast(inputs, forecastConfig, { currentEmployeesCount })
-    const afterPoints = calculateForecast(scenarioAfterInputs, forecastConfig, { currentEmployeesCount })
+    const beforePoints = calculateForecast(inputs, forecastConfig, { currentEmployeesCount, taxSettings })
+    const afterPoints = calculateForecast(scenarioAfterInputs, forecastConfig, { currentEmployeesCount, taxSettings })
     const sum = (points: typeof beforePoints, key: 'revenue' | 'netProfit' | 'cashFlow') =>
       points.reduce((s, p) => s + p[key], 0)
     return {
@@ -102,7 +103,7 @@ export function SimulatorPage() {
       netProfit: { before: sum(beforePoints, 'netProfit'), after: sum(afterPoints, 'netProfit') },
       cashFlow: { before: sum(beforePoints, 'cashFlow'), after: sum(afterPoints, 'cashFlow') },
     }
-  }, [inputs, scenarioAfterInputs, forecastConfig, profile])
+  }, [inputs, scenarioAfterInputs, forecastConfig, profile, taxSettings])
 
   const hasPriceIncrease = pct.avgCheck > 0
   const hasVolumeChange = pct.salesCount !== 0

@@ -24,8 +24,21 @@ export interface BalanceSheetSnapshot {
   workingCapital: number
   /** Оборотные активы / Краткосрочные обязательства. null — если краткосрочных обязательств нет. */
   currentRatio: number | null
-  /** Обязательства / Капитал. null — если капитал ≤ 0 (соотношение теряет смысл). */
+  /** Краткосрочные + долгосрочные кредиты — долг, по которому реально платятся проценты (без кредиторки). */
+  interestBearingDebt: number
+  /**
+   * Долг / Капитал = Процентный долг (кредиты) / Капитал. Показывает именно кредитную нагрузку —
+   * кредиторская задолженность (payables) в неё не входит, в отличие от Обязательства/Капитал ниже.
+   * null — если капитал ≤ 0 (соотношение теряет смысл).
+   */
   debtToEquity: number | null
+  /**
+   * Обязательства / Капитал = ВСЕ обязательства (кредиты + кредиторка + прочее) / Капитал —
+   * более широкий и обычно больший показатель, чем Долг/Капитал. Не путать одно с другим:
+   * бизнес без единого кредита, но с большой кредиторкой, будет иметь Долг/Капитал = 0,
+   * но заметный Обязательства/Капитал. null — если капитал ≤ 0.
+   */
+  liabilitiesToEquity: number | null
   /** Капитал / Активы, % — коэффициент финансовой автономии. null — если активов нет. */
   equityRatioPct: number | null
 }
@@ -45,7 +58,9 @@ export function buildBalanceSheetSnapshot(inputs: BalanceSheetInputs): BalanceSh
   const workingCapital = totalCurrentAssets - totalCurrentLiabilities
 
   const currentRatio = totalCurrentLiabilities > 0 ? totalCurrentAssets / totalCurrentLiabilities : null
-  const debtToEquity = equity > 0 ? totalLiabilities / equity : null
+  const interestBearingDebt = inputs.currentLiabilities.shortTermDebt + inputs.nonCurrentLiabilities.longTermDebt
+  const debtToEquity = equity > 0 ? interestBearingDebt / equity : null
+  const liabilitiesToEquity = equity > 0 ? totalLiabilities / equity : null
   const equityRatioPct = totalAssets > 0 ? (equity / totalAssets) * 100 : null
 
   return {
@@ -58,7 +73,9 @@ export function buildBalanceSheetSnapshot(inputs: BalanceSheetInputs): BalanceSh
     equity,
     workingCapital,
     currentRatio,
+    interestBearingDebt,
     debtToEquity,
+    liabilitiesToEquity,
     equityRatioPct,
   }
 }

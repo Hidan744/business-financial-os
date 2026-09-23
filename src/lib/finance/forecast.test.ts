@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { FinancialInputs } from '@/types/finance'
+import type { BalanceSheetInputs, FinancialInputs } from '@/types/finance'
 import { calculateAverageMonthlyGrowthRatePct, calculateForecast, findCashFlowGap } from './forecast'
 import { DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import type { MonthlyForecastPoint } from '@/types/scenario'
+import { DEFAULT_TAX_SETTINGS } from '@/types/tax'
+import { emptyBalanceSheet } from './balanceSheet'
 
 function makeInputs(): FinancialInputs {
   return {
@@ -89,6 +91,71 @@ describe('calculateForecast', () => {
   it('defaults openingCash to 0 when not provided', () => {
     const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG)
     expect(points[0].cashBalance).toBeCloseTo(points[0].cashFlow, 2)
+  })
+
+  // TEST 8 (spec §30): Revenue up -> tax must be recomputed, not frozen at the base amount.
+  describe('tax is recomputed per period, not copied from the base period', () => {
+    it('scales tax with revenue by the effective current rate when no tax regime is given', () => {
+      const base = makeInputs() // taxes 90000 on revenue 2400000 -> 3.75% effective rate
+      const points = calculateForecast(base, { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 10, avgCheckGrowthPct: 0 })
+      // netProfit = revenue - cogs - fixedCosts - depreciation(0) - interest(0) - tax
+      const fixedCosts = base.payroll + base.rent + base.marketing
+      const cogsRatio = base.cogs / base.revenue
+      const effectiveRate = base.taxes / base.revenue
+      const point = points[0]
+      const impliedTax = point.revenue - point.revenue * cogsRatio - fixedCosts - point.netProfit
+      expect(impliedTax).toBeCloseTo(point.revenue * effectiveRate, 2)
+      // and NOT frozen at the base period's absolute tax amount
+      expect(impliedTax).not.toBeCloseTo(base.taxes, 0)
+    })
+
+    it('computes tax through the real tax engine when taxSettings (regime) is provided', () => {
+      const base = makeInputs()
+      const points = calculateForecast(base, { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 10 }, { taxSettings: DEFAULT_TAX_SETTINGS })
+      // DEFAULT_TAX_SETTINGS regime is usn_income_minus_expenses: tax = max((rev-exp)*rate, rev*1%)
+      const point = points[0]
+      const cogsRatio = base.cogs / base.revenue
+      const cogs = point.revenue * cogsRatio
+      const fixedCosts = base.payroll + base.rent + base.marketing
+      const expenses = cogs + fixedCosts
+      const calculated = Math.max(0, point.revenue - expenses) * (DEFAULT_TAX_SETTINGS.usnIncomeMinusExpensesRatePct / 100)
+      const minimumTax = point.revenue * 0.01
+      const expectedTax = Math.max(calculated, minimumTax)
+      const impliedTax = point.revenue - expenses - point.netProfit
+      expect(impliedTax).toBeCloseTo(expectedTax, 2)
+    })
+  })
+
+  // TEST 7 (spec §30): growing AR (via DSO on rising revenue) should reduce cash flow vs the
+  // no-working-capital baseline; the reverse for AP (DPO) freeing up cash.
+  describe('incremental working capital drags on cash flow when a balance sheet is provided', () => {
+    function balance(overrides: Partial<BalanceSheetInputs> = {}): BalanceSheetInputs {
+      return {
+        ...emptyBalanceSheet('b1', '2026-09'),
+        currentAssets: { cash: 500000, receivables: 200000, inventory: 150000, other: 0 },
+        currentLiabilities: { payables: 100000, shortTermDebt: 0, other: 0 },
+        ...overrides,
+      }
+    }
+
+    it('a growing forecast consumes more cash when working capital (AR/inventory growth) is modeled', () => {
+      const base = makeInputs()
+      const config = { ...DEFAULT_FORECAST_CONFIG, salesCountGrowthPct: 8, avgCheckGrowthPct: 0 }
+      const withoutWC = calculateForecast(base, config)
+      const withWC = calculateForecast(base, config, { balanceSheet: balance() })
+      // Same net profit (working capital never touches the P&L)...
+      expect(withWC[5].netProfit).toBeCloseTo(withoutWC[5].netProfit, 2)
+      // ...but less cash generated, because growing AR/inventory ties up money.
+      expect(withWC[5].cashBalance).toBeLessThan(withoutWC[5].cashBalance)
+    })
+
+    it('never produces NaN/Infinity when working capital is modeled', () => {
+      const points = calculateForecast(makeInputs(), DEFAULT_FORECAST_CONFIG, { balanceSheet: balance() })
+      for (const point of points) {
+        expect(Number.isFinite(point.cashFlow)).toBe(true)
+        expect(Number.isFinite(point.cashBalance)).toBe(true)
+      }
+    })
   })
 })
 

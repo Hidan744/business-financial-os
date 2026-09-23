@@ -19,6 +19,8 @@ export function FinancialPlanPage() {
   const profile = useBusinessStore((s) => s.profile)
   const setForecastConfig = useBusinessStore((s) => s.setForecastConfig)
   const forecastConfig = useBusinessStore((s) => s.forecastConfig)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
+  const balanceSheet = useBusinessStore((s) => s.balanceSheet)
 
   const [targetInput, setTargetInput] = useState('6000000')
   const [monthsToTarget, setMonthsToTarget] = useState(12)
@@ -27,8 +29,8 @@ export function FinancialPlanPage() {
 
   const plan = useMemo(() => {
     if (!inputs) return null
-    return buildFinancialPlan(inputs, target, monthsToTarget, profile?.employeesCount ?? 1)
-  }, [inputs, target, monthsToTarget, profile])
+    return buildFinancialPlan(inputs, target, monthsToTarget, profile?.employeesCount ?? 1, taxSettings, balanceSheet ?? undefined)
+  }, [inputs, target, monthsToTarget, profile, taxSettings, balanceSheet])
 
   if (!inputs || !plan) return null
 
@@ -95,8 +97,10 @@ export function FinancialPlanPage() {
           <CardTitle className="flex items-center gap-1.5">
             Что для этого нужно
             <InfoTooltip>
-              Необходимая выручка = (целевая прибыль за месяц + постоянные расходы) / маржинальность. Если
-              маржинальность сейчас ≤ 0, цель недостижима только за счёт роста продаж — сначала нужно исправить
+              Цель — это ЧИСТАЯ прибыль (после амортизации, процентов по кредиту и налога), поэтому нужная
+              выручка находится подбором: система прогоняет разные значения выручки через P&amp;L и налоговый
+              движок (тот же, что на странице «Налоги»), пока чистая прибыль не сойдётся к цели. Если
+              маржинальность сейчас ≤ 0 — цель недостижима только за счёт роста продаж, сначала нужно исправить
               экономику (цену, себестоимость).
             </InfoTooltip>
           </CardTitle>

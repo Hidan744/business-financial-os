@@ -31,6 +31,7 @@ export function DashboardPage() {
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const balanceSheet = useBusinessStore((s) => s.balanceSheet)
   const forecastConfig = useBusinessStore((s) => s.forecastConfig)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
 
   if (!inputs || !snapshot || !diagnostics || !profile) return null
 
@@ -38,6 +39,8 @@ export function DashboardPage() {
   const forecastPoints = calculateForecast(inputs, forecastConfig, {
     currentEmployeesCount: profile.employeesCount,
     openingCash: balanceSheet?.currentAssets.cash ?? 0,
+    taxSettings,
+    balanceSheet: balanceSheet ?? undefined,
   })
   const cashFlowGap = findCashFlowGap(forecastPoints)
   const healthHeadline = {

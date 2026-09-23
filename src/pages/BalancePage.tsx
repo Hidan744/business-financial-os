@@ -112,7 +112,7 @@ export function BalancePage() {
           <CardTitle>Ликвидность и устойчивость</CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricTile
               label="Текущая ликвидность"
               value={snapshot.currentRatio !== null ? `${snapshot.currentRatio.toFixed(2)}×` : '—'}
@@ -122,8 +122,14 @@ export function BalancePage() {
             <MetricTile
               label="Долг / Капитал"
               value={snapshot.debtToEquity !== null ? `${snapshot.debtToEquity.toFixed(2)}×` : '—'}
-              tooltip="Обязательства / Капитал. Меньше 1× — обязательства меньше капитала. «—» — если капитал отрицательный или нулевой."
+              tooltip="Процентный долг (краткосрочные + долгосрочные кредиты, БЕЗ кредиторки) / Капитал. Меньше 1× — кредитов меньше капитала. «—» — если капитал отрицательный или нулевой."
               accent={snapshot.debtToEquity === null ? undefined : snapshot.debtToEquity <= 1 ? 'positive' : snapshot.debtToEquity <= 2 ? 'neutral' : 'negative'}
+            />
+            <MetricTile
+              label="Обязательства / Капитал"
+              value={snapshot.liabilitiesToEquity !== null ? `${snapshot.liabilitiesToEquity.toFixed(2)}×` : '—'}
+              tooltip="ВСЕ обязательства (кредиты + кредиторка + прочее) / Капитал — шире, чем Долг/Капитал: сюда входит и кредиторская задолженность, по которой проценты не платятся. «—» — если капитал отрицательный или нулевой."
+              accent={snapshot.liabilitiesToEquity === null ? undefined : snapshot.liabilitiesToEquity <= 1 ? 'positive' : snapshot.liabilitiesToEquity <= 2 ? 'neutral' : 'negative'}
             />
             <MetricTile
               label="Автономия"

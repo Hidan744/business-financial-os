@@ -61,15 +61,41 @@ describe('buildBalanceSheetSnapshot', () => {
     expect(noCurrentLiabilities.currentRatio).toBeNull()
   })
 
-  it('computes debt-to-equity, and returns null when equity is not positive', () => {
+  it('computes debt-to-equity from INTEREST-BEARING debt only (not payables), and null when equity is not positive', () => {
     const snapshot = buildBalanceSheetSnapshot(makeInputs())
-    expect(snapshot.debtToEquity).toBeCloseTo(550000 / 1145000, 5)
+    // interest-bearing debt = shortTermDebt 50000 + longTermDebt 300000 = 350000 (payables 200000 excluded)
+    expect(snapshot.interestBearingDebt).toBe(350000)
+    expect(snapshot.debtToEquity).toBeCloseTo(350000 / 1145000, 5)
 
     const insolvent = buildBalanceSheetSnapshot(
       makeInputs({ nonCurrentLiabilities: { longTermDebt: 5000000, other: 0 } }),
     )
     expect(insolvent.equity).toBeLessThan(0)
     expect(insolvent.debtToEquity).toBeNull()
+  })
+
+  it('computes liabilities-to-equity from ALL liabilities (including payables) — a distinct, wider metric than debt-to-equity', () => {
+    const snapshot = buildBalanceSheetSnapshot(makeInputs())
+    expect(snapshot.liabilitiesToEquity).toBeCloseTo(550000 / 1145000, 5)
+    // liabilitiesToEquity > debtToEquity whenever there's non-debt liabilities (payables here)
+    expect(snapshot.liabilitiesToEquity).toBeGreaterThan(snapshot.debtToEquity ?? 0)
+
+    const insolvent = buildBalanceSheetSnapshot(
+      makeInputs({ nonCurrentLiabilities: { longTermDebt: 5000000, other: 0 } }),
+    )
+    expect(insolvent.liabilitiesToEquity).toBeNull()
+  })
+
+  it('a business with payables but zero loans has debtToEquity 0 while liabilitiesToEquity is still positive', () => {
+    const snapshot = buildBalanceSheetSnapshot(
+      makeInputs({
+        currentLiabilities: { payables: 200000, shortTermDebt: 0, other: 0 },
+        nonCurrentLiabilities: { longTermDebt: 0, other: 0 },
+      }),
+    )
+    expect(snapshot.interestBearingDebt).toBe(0)
+    expect(snapshot.debtToEquity).toBe(0)
+    expect(snapshot.liabilitiesToEquity).toBeGreaterThan(0)
   })
 
   it('computes the equity ratio (%), and returns null when there are no assets', () => {

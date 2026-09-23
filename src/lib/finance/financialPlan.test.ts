@@ -33,13 +33,35 @@ describe('buildFinancialPlan', () => {
     expect(plan.quarters).toHaveLength(0)
   })
 
-  it('computes required monthly revenue from target annual profit and current cost structure', () => {
+  it('computes required monthly revenue from target annual NET profit — accounting for tax, not just contribution margin', () => {
     // fixedCosts = 520000+220000+150000+180000 = 1,070,000; contributionMargin = (2.4M-720k)/2.4M = 0.7
     // monthly target = 12,000,000/12 = 1,000,000
-    // requiredRevenue = (1,000,000 + 1,070,000) / 0.7
+    // No taxSettings passed -> falls back to the base period's effective tax rate: 90000/2,400,000 = 3.75%.
+    // Since target is NET profit (after tax), tax must come out of the same contribution margin:
+    // requiredRevenue = (1,000,000 + 1,070,000) / (0.7 - 0.0375)
     const plan = buildFinancialPlan(makeInputs(), 12000000, 12, 8)
-    expect(plan.requiredMonthlyRevenue).toBeCloseTo((1000000 + 1070000) / 0.7, 2)
+    const expectedRevenue = (1000000 + 1070000) / (0.7 - 90000 / 2400000)
+    expect(plan.requiredMonthlyRevenue).toBeCloseTo(expectedRevenue, 0)
     expect(plan.requiredMonthlySales).toBeCloseTo((plan.requiredMonthlyRevenue as number) / 850, 2)
+  })
+
+  it('requires MORE revenue than the naive contribution-only formula once tax is honestly accounted for', () => {
+    // This is the exact bug the audit found: the old calculateRequiredRevenue ignored tax entirely
+    // even though the UI promises a target NET (take-home) profit — understating what's needed.
+    const plan = buildFinancialPlan(makeInputs(), 12000000, 12, 8)
+    const naiveContributionOnlyRevenue = (1000000 + 1070000) / 0.7
+    expect(plan.requiredMonthlyRevenue as number).toBeGreaterThan(naiveContributionOnlyRevenue)
+  })
+
+  it('accounts for depreciation and interest, not just fixed costs and tax', () => {
+    const withDepreciationAndInterest = buildFinancialPlan(
+      makeInputs({ depreciation: 50000, loanInterest: 30000 }),
+      12000000,
+      12,
+      8,
+    )
+    const without = buildFinancialPlan(makeInputs(), 12000000, 12, 8)
+    expect(withDepreciationAndInterest.requiredMonthlyRevenue as number).toBeGreaterThan(without.requiredMonthlyRevenue as number)
   })
 
   it('is not "already achieved" when the target requires more revenue than today', () => {

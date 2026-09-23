@@ -37,6 +37,36 @@ export interface TaxCalculationResult {
   note: string
 }
 
+export interface TaxProjectionContext {
+  /** Настройки налогового режима бизнеса — если заданы, налог на прогнозный период считается точно
+   *  через calculateTaxForRegime (тот же движок, что на странице «Налоги»), а не приблизительно. */
+  taxSettings?: TaxSettings
+  /**
+   * Фоллбэк, когда режим для данного расчёта не передан: эффективная ставка налога от выручки —
+   * обычно (текущий Tax / текущая Revenue) базового периода. Так налог хотя бы масштабируется
+   * вместе с прогнозной выручкой, а не остаётся замороженным числом текущего периода.
+   */
+  fallbackRatePctOfRevenue?: number
+}
+
+/**
+ * Единая точка прогноза налога для будущего периода (Forecast, Financial Plan, AI CFO) — чтобы
+ * методика не расходилась между модулями. С taxSettings — точный расчёт по выбранному режиму;
+ * без него — оценка по текущей эффективной ставке от выручки.
+ */
+export function estimateTaxForProjection(
+  revenue: number,
+  expenses: number,
+  ebit: number,
+  context: TaxProjectionContext,
+): number {
+  if (context.taxSettings) {
+    return calculateTaxForRegime(context.taxSettings.regime, context.taxSettings, { revenue, expenses, ebit }).amount
+  }
+  const rate = context.fallbackRatePctOfRevenue ?? 0
+  return Math.max(0, revenue) * rate
+}
+
 /** Считает налог за период для выбранного режима на основе текущих настроек и финансовых данных. */
 export function calculateTaxForRegime(
   regime: TaxRegime,

@@ -5,12 +5,11 @@ import { Label } from '@/components/ui/label'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
-import { getFixedCosts } from '@/lib/finance/snapshot'
+import { getFixedCosts, getVariableCosts } from '@/lib/finance/snapshot'
 import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import {
   calculateAllowedCAC,
-  calculateRequiredRevenue,
-  calculateRequiredSales,
+  calculateRequiredRevenueForNetProfit,
   calculateWithdrawableAmount,
 } from '@/lib/finance/breakeven'
 import { calculateContributionMarginPct } from '@/lib/finance/formulas'
@@ -22,6 +21,7 @@ const MONTHS_PER_YEAR = 12
 export function SalesPage() {
   const { inputs, snapshot } = useFinancials()
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
   const [targetProfitInput, setTargetProfitInput] = useState('')
   const [annualTargetProfitInput, setAnnualTargetProfitInput] = useState('')
   const [minimumReserveInput, setMinimumReserveInput] = useState('')
@@ -36,32 +36,74 @@ export function SalesPage() {
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
   }, [annualTargetProfitInput])
 
+  // "Сколько чистыми" — это ЧИСТАЯ прибыль (после амортизации, процентов и налога), поэтому
+  // нужная выручка ищется через тот же решатель, что использует Financial Plan и AI CFO —
+  // единый источник истины, а не отдельная приблизительная формула на каждой странице.
   const result = useMemo(() => {
     if (!inputs) return null
     const fixedCosts = getFixedCosts(inputs)
+    const variableCosts = getVariableCosts(inputs)
+    const variableCostRatio = inputs.revenue > 0 ? variableCosts / inputs.revenue : 0
     const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
-    const requiredRevenue = calculateRequiredRevenue(targetProfit, fixedCosts, contributionMarginPct)
-    const requiredSales = calculateRequiredSales(requiredRevenue, inputs.avgCheck)
+    const fallbackTaxRatePctOfRevenue = inputs.revenue > 0 ? inputs.taxes / inputs.revenue : 0
+
+    const solved = calculateRequiredRevenueForNetProfit(
+      targetProfit,
+      fixedCosts,
+      variableCostRatio,
+      inputs.depreciation,
+      inputs.loanInterest,
+      inputs.avgCheck,
+      { taxSettings, fallbackRatePctOfRevenue: fallbackTaxRatePctOfRevenue },
+    )
+    const requiredRevenue = solved.requiredRevenue
+    const requiredSales = solved.requiredSales
     const requiredSalesPerDay = requiredSales !== null ? requiredSales / WORKING_DAYS_PER_MONTH : null
     const requiredAvgCheck = inputs.salesCount > 0 && requiredRevenue !== null ? requiredRevenue / inputs.salesCount : null
     const allowedCAC = calculateAllowedCAC(inputs.avgCheck, contributionMarginPct, targetProfit, requiredSales)
+    // Приблизительно: при текущей выручке сколько нужна была бы маржа, чтобы прийти к цели — налог
+    // и амортизация/проценты добавлены как текущая сумма (не пересчитываются от новой маржи).
     const requiredMarginPct =
-      inputs.revenue > 0 ? ((targetProfit + fixedCosts) / inputs.revenue) * 100 : null
+      inputs.revenue > 0 ? ((targetProfit + fixedCosts + inputs.depreciation + inputs.loanInterest + inputs.taxes) / inputs.revenue) * 100 : null
 
-    return { requiredRevenue, requiredSales, requiredSalesPerDay, requiredAvgCheck, allowedCAC, requiredMarginPct, fixedCosts }
-  }, [inputs, targetProfit])
+    return {
+      requiredRevenue,
+      requiredSales,
+      requiredSalesPerDay,
+      requiredAvgCheck,
+      allowedCAC,
+      requiredMarginPct,
+      fixedCosts,
+      targetUnreachable: solved.status === 'target_unreachable',
+    }
+  }, [inputs, targetProfit, taxSettings])
 
   const annualResult = useMemo(() => {
     if (!inputs) return null
     const annualFixedCosts = getFixedCosts(inputs) * MONTHS_PER_YEAR
+    const annualDepreciation = inputs.depreciation * MONTHS_PER_YEAR
+    const annualInterest = inputs.loanInterest * MONTHS_PER_YEAR
+    const variableCosts = getVariableCosts(inputs)
+    const variableCostRatio = inputs.revenue > 0 ? variableCosts / inputs.revenue : 0
     const contributionMarginPct = calculateContributionMarginPct(inputs.revenue, inputs.cogs)
-    const requiredAnnualRevenue = calculateRequiredRevenue(annualTargetProfit, annualFixedCosts, contributionMarginPct)
-    const requiredAnnualSales = calculateRequiredSales(requiredAnnualRevenue, inputs.avgCheck)
-    const requiredSalesPerMonth = requiredAnnualSales !== null ? requiredAnnualSales / MONTHS_PER_YEAR : null
-    const allowedCAC = calculateAllowedCAC(inputs.avgCheck, contributionMarginPct, annualTargetProfit, requiredAnnualSales)
+    const fallbackTaxRatePctOfRevenue = inputs.revenue > 0 ? inputs.taxes / inputs.revenue : 0
 
-    return { requiredAnnualRevenue, requiredAnnualSales, requiredSalesPerMonth, allowedCAC }
-  }, [inputs, annualTargetProfit])
+    const solved = calculateRequiredRevenueForNetProfit(
+      annualTargetProfit,
+      annualFixedCosts,
+      variableCostRatio,
+      annualDepreciation,
+      annualInterest,
+      inputs.avgCheck, // avgCheck is per-sale, not scaled by period length — required sales = revenue / avgCheck
+      { taxSettings, fallbackRatePctOfRevenue: fallbackTaxRatePctOfRevenue },
+    )
+    const requiredAnnualRevenue = solved.requiredRevenue
+    const requiredAnnualSales = solved.requiredSales
+    const requiredSalesPerMonth = requiredAnnualSales !== null ? requiredAnnualSales / MONTHS_PER_YEAR : null
+    const allowedCAC = calculateAllowedCAC(inputs.avgCheck, contributionMarginPct, annualTargetProfit / MONTHS_PER_YEAR, requiredSalesPerMonth)
+
+    return { requiredAnnualRevenue, requiredAnnualSales, requiredSalesPerMonth, allowedCAC, targetUnreachable: solved.status === 'target_unreachable' }
+  }, [inputs, annualTargetProfit, taxSettings])
 
   const cashBalance = cashFlowInputs ? buildCashFlowSummary(cashFlowInputs).closingBalance : 0
   const minimumReserve = useMemo(() => {
@@ -117,24 +159,39 @@ export function SalesPage() {
 
           {targetProfit > 0 && result && (
             <div className="rounded-xl border border-ink-800 bg-ink-900/50 p-5 space-y-4">
-              <FlowStep label="Цель" value={formatCurrency(targetProfit)} />
-              <FlowStep label="Необходимая выручка" value={result.requiredRevenue !== null ? formatCurrency(result.requiredRevenue) : 'недостижимо при текущей марже'} />
-              <FlowStep label="Продаж в месяц" value={result.requiredSales !== null ? formatNumber(result.requiredSales) : '—'} />
-              <FlowStep label="Продаж в день" value={result.requiredSalesPerDay !== null ? formatNumber(result.requiredSalesPerDay) : '—'} />
-              <FlowStep
-                label="Необходимый средний чек (при текущем кол-ве продаж)"
-                value={result.requiredAvgCheck !== null ? formatCurrency(result.requiredAvgCheck) : '—'}
-              />
-              <FlowStep
-                label="Допустимый CAC"
-                value={result.allowedCAC !== null ? formatCurrency(result.allowedCAC) : '—'}
-                tooltip="Максимальная стоимость привлечения одного клиента, при которой цель по прибыли ещё достижима."
-              />
-              <FlowStep
-                label="Необходимая маржа (при текущей выручке)"
-                value={result.requiredMarginPct !== null ? formatPercent(result.requiredMarginPct) : '—'}
-                tooltip="Какая маржинальность нужна, чтобы достичь цели без роста продаж."
-              />
+              <FlowStep label="Цель (чистыми)" value={formatCurrency(targetProfit)} />
+              {result.targetUnreachable ? (
+                <p className="text-sm text-negative-500">
+                  Недостижимо ни при какой выручке: переменные затраты съедают всю выручку (маржинальность ≤ 0) —
+                  сначала нужно поднять цену или снизить себестоимость, рост продаж это не решит.
+                </p>
+              ) : (
+                <>
+                  <FlowStep label="Необходимая выручка" value={result.requiredRevenue !== null ? formatCurrency(result.requiredRevenue) : '—'} />
+                  <FlowStep label="Продаж в месяц" value={result.requiredSales !== null ? formatNumber(result.requiredSales) : '—'} />
+                  <FlowStep label="Продаж в день" value={result.requiredSalesPerDay !== null ? formatNumber(result.requiredSalesPerDay) : '—'} />
+                  <FlowStep
+                    label="Необходимый средний чек (при текущем кол-ве продаж)"
+                    value={result.requiredAvgCheck !== null ? formatCurrency(result.requiredAvgCheck) : '—'}
+                  />
+                  <FlowStep
+                    label="Допустимый CAC"
+                    value={
+                      result.allowedCAC.status === 'ok' && result.allowedCAC.cac !== null
+                        ? formatCurrency(result.allowedCAC.cac)
+                        : result.allowedCAC.status === 'target_unreachable'
+                          ? 'цель недостижима при таком объёме продаж'
+                          : '—'
+                    }
+                    tooltip="Максимальная стоимость привлечения одного клиента, при которой цель по прибыли ещё достижима. Если цель недостижима — реклама не может быть настолько дешёвой, чтобы это исправить; нужно менять цену, издержки или сам объём продаж."
+                  />
+                  <FlowStep
+                    label="Необходимая маржа (при текущей выручке)"
+                    value={result.requiredMarginPct !== null ? formatPercent(result.requiredMarginPct) : '—'}
+                    tooltip="Приблизительно: какая маржинальность нужна при сегодняшней выручке, чтобы достичь цели без роста продаж. Налог, амортизация и проценты учтены по текущим суммам — не пересчитываются от новой маржи."
+                  />
+                </>
+              )}
             </div>
           )}
         </CardContent>
@@ -159,18 +216,33 @@ export function SalesPage() {
 
           {annualTargetProfit > 0 && annualResult && (
             <div className="rounded-xl border border-ink-800 bg-ink-900/50 p-5 space-y-4">
-              <FlowStep label="Цель на год" value={formatCurrency(annualTargetProfit)} />
-              <FlowStep
-                label="Необходимая годовая выручка"
-                value={annualResult.requiredAnnualRevenue !== null ? formatCurrency(annualResult.requiredAnnualRevenue) : 'недостижимо при текущей марже'}
-              />
-              <FlowStep label="Продаж в год" value={annualResult.requiredAnnualSales !== null ? formatNumber(annualResult.requiredAnnualSales) : '—'} />
-              <FlowStep label="Продаж в месяц" value={annualResult.requiredSalesPerMonth !== null ? formatNumber(annualResult.requiredSalesPerMonth) : '—'} />
-              <FlowStep
-                label="Допустимый CAC"
-                value={annualResult.allowedCAC !== null ? formatCurrency(annualResult.allowedCAC) : '—'}
-                tooltip="Максимальная стоимость привлечения одного клиента, при которой годовая цель по прибыли ещё достижима."
-              />
+              <FlowStep label="Цель на год (чистыми)" value={formatCurrency(annualTargetProfit)} />
+              {annualResult.targetUnreachable ? (
+                <p className="text-sm text-negative-500">
+                  Недостижимо ни при какой выручке: переменные затраты съедают всю выручку (маржинальность ≤ 0) —
+                  сначала нужно поднять цену или снизить себестоимость.
+                </p>
+              ) : (
+                <>
+                  <FlowStep
+                    label="Необходимая годовая выручка"
+                    value={annualResult.requiredAnnualRevenue !== null ? formatCurrency(annualResult.requiredAnnualRevenue) : '—'}
+                  />
+                  <FlowStep label="Продаж в год" value={annualResult.requiredAnnualSales !== null ? formatNumber(annualResult.requiredAnnualSales) : '—'} />
+                  <FlowStep label="Продаж в месяц" value={annualResult.requiredSalesPerMonth !== null ? formatNumber(annualResult.requiredSalesPerMonth) : '—'} />
+                  <FlowStep
+                    label="Допустимый CAC"
+                    value={
+                      annualResult.allowedCAC.status === 'ok' && annualResult.allowedCAC.cac !== null
+                        ? formatCurrency(annualResult.allowedCAC.cac)
+                        : annualResult.allowedCAC.status === 'target_unreachable'
+                          ? 'цель недостижима при таком объёме продаж'
+                          : '—'
+                    }
+                    tooltip="Максимальная стоимость привлечения одного клиента, при которой годовая цель по прибыли ещё достижима."
+                  />
+                </>
+              )}
             </div>
           )}
         </CardContent>

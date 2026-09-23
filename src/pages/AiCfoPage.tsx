@@ -33,6 +33,7 @@ export function AiCfoPage() {
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const forecastConfig = useBusinessStore((s) => s.forecastConfig)
   const unitEconomics = useBusinessStore((s) => s.unitEconomics)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
   const aiHistory = useBusinessStore((s) => s.aiHistory)
   const addAiMessage = useBusinessStore((s) => s.addAiMessage)
   const authStatus = useAuthStore((s) => s.status)
@@ -104,7 +105,7 @@ export function AiCfoPage() {
   }
 
   async function sendRuleBasedAnswer(question: string, llmFallbackReason?: string) {
-    const result = answerQuestion(question, inputs!, snapshot!, diagnostics!, profile?.employeesCount ?? 0)
+    const result = answerQuestion(question, inputs!, snapshot!, diagnostics!, profile?.employeesCount ?? 0, taxSettings)
     await addAiMessage({
       id: generateId('msg'),
       role: 'assistant',

@@ -15,13 +15,19 @@ export function ForecastPage() {
   const balanceSheet = useBusinessStore((s) => s.balanceSheet)
   const forecastConfig = useBusinessStore((s) => s.forecastConfig)
   const setForecastConfig = useBusinessStore((s) => s.setForecastConfig)
+  const taxSettings = useBusinessStore((s) => s.taxSettings)
 
   const openingCash = balanceSheet?.currentAssets.cash ?? 0
 
   const points = useMemo(() => {
     if (!inputs) return []
-    return calculateForecast(inputs, forecastConfig, { currentEmployeesCount: profile?.employeesCount ?? 1, openingCash })
-  }, [inputs, forecastConfig, profile, openingCash])
+    return calculateForecast(inputs, forecastConfig, {
+      currentEmployeesCount: profile?.employeesCount ?? 1,
+      openingCash,
+      taxSettings,
+      balanceSheet: balanceSheet ?? undefined,
+    })
+  }, [inputs, forecastConfig, profile, openingCash, taxSettings, balanceSheet])
 
   if (!inputs) return null
 
