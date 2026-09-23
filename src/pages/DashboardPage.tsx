@@ -22,6 +22,7 @@ import { buildCashFlowSummary } from '@/lib/finance/cashflow'
 import { calculateRunwayMonths } from '@/lib/finance/stressTest'
 import { calculateForecast, findCashFlowGap } from '@/lib/finance/forecast'
 import { BUSINESS_TYPE_KPI_PRIORITIES } from '@/lib/businessTypeKpis'
+import { getEffectiveModules } from '@/types/modules'
 
 export function DashboardPage() {
   const { inputs, snapshot } = useFinancials()
@@ -66,6 +67,7 @@ export function DashboardPage() {
 
   const priorityKeys = BUSINESS_TYPE_KPI_PRIORITIES[profile.type] ?? []
   const isKey = (key: string) => priorityKeys.includes(key)
+  const modules = getEffectiveModules(profile)
 
   const isSelfEmployed = profile.isSelfEmployed ?? false
   const selfEmployedExpenses = snapshot.revenue - snapshot.netProfit - inputs.taxes
@@ -181,14 +183,16 @@ export function DashboardPage() {
           icon={<Wallet className="size-4 text-ink-500" />}
           highlighted={isKey('cashFlow')}
         />
-        <KpiCard
-          label="Marketing Efficiency"
-          value={formatPercent(snapshot.marketingEfficiencyPct)}
-          tooltip="НЕ настоящий ROMI. Грубая оценка (вся выручка − расходы на рекламу) / расходы на рекламу, по всей выручке компании — система не различает, какие продажи пришли именно из рекламы. Чтобы увидеть настоящий ROMI, укажите выручку, атрибутированную маркетингу, в разделе «Финансы»."
-          accent={snapshot.marketingEfficiencyPct >= 0 ? 'positive' : 'negative'}
-          highlighted={isKey('marketingEfficiencyPct')}
-        />
-        {snapshot.romiPct !== null && (
+        {modules.marketing && (
+          <KpiCard
+            label="Marketing Efficiency"
+            value={formatPercent(snapshot.marketingEfficiencyPct)}
+            tooltip="НЕ настоящий ROMI. Грубая оценка (вся выручка − расходы на рекламу) / расходы на рекламу, по всей выручке компании — система не различает, какие продажи пришли именно из рекламы. Чтобы увидеть настоящий ROMI, укажите выручку, атрибутированную маркетингу, в разделе «Финансы»."
+            accent={snapshot.marketingEfficiencyPct >= 0 ? 'positive' : 'negative'}
+            highlighted={isKey('marketingEfficiencyPct')}
+          />
+        )}
+        {modules.marketing && snapshot.romiPct !== null && (
           <KpiCard
             label="ROMI"
             value={formatPercent(snapshot.romiPct)}
@@ -197,7 +201,7 @@ export function DashboardPage() {
             highlighted={isKey('romiPct')}
           />
         )}
-        {snapshot.debtToEbitda !== null && (
+        {modules.debt && snapshot.debtToEbitda !== null && (
           <KpiCard
             label="Долг / EBITDA"
             value={`${snapshot.debtToEbitda.toFixed(2)}×`}
@@ -241,7 +245,7 @@ export function DashboardPage() {
             accent={profitYoyPct >= 0 ? 'positive' : 'negative'}
           />
         )}
-        {!isSelfEmployed && (
+        {!isSelfEmployed && modules.hr && (
           <KpiCard
             label="Выручка на сотрудника"
             value={revenuePerEmployee !== null ? formatCurrency(revenuePerEmployee) : '—'}
@@ -249,12 +253,14 @@ export function DashboardPage() {
             highlighted={isKey('revenuePerEmployee')}
           />
         )}
-        <KpiCard
-          label="Стоимость продажи (оценка)"
-          value={costPerSale !== null ? formatCurrency(costPerSale) : '—'}
-          tooltip="Приблизительно: расходы на рекламу ÷ количество продаж. Не настоящий CAC — система не различает, какие продажи пришли именно из рекламы."
-          highlighted={isKey('costPerSale')}
-        />
+        {modules.marketing && (
+          <KpiCard
+            label="Стоимость продажи (оценка)"
+            value={costPerSale !== null ? formatCurrency(costPerSale) : '—'}
+            tooltip="Приблизительно: расходы на рекламу ÷ количество продаж. Не настоящий CAC — система не различает, какие продажи пришли именно из рекламы."
+            highlighted={isKey('costPerSale')}
+          />
+        )}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">

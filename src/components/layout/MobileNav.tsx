@@ -6,37 +6,19 @@ import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
 import { useBusinessStore } from '@/store/businessStore'
 import { isRouteUnlockedForMember } from '@/types/teamAccess'
-
-const NAV_ITEMS = [
-  { to: '/app/dashboard', label: 'Dashboard' },
-  { to: '/app/finance', label: 'Финансы' },
-  { to: '/app/taxes', label: 'Налоги' },
-  { to: '/app/balance', label: 'Баланс' },
-  { to: '/app/cashflow', label: 'Cash Flow' },
-  { to: '/app/history', label: 'История' },
-  { to: '/app/history-import', label: 'Импорт истории' },
-  { to: '/app/simulator', label: 'Симулятор' },
-  { to: '/app/sales', label: 'Продажи' },
-  { to: '/app/forecast', label: 'Прогноз' },
-  { to: '/app/plan', label: 'Финансовый план' },
-  { to: '/app/ai-cfo', label: 'AI CFO' },
-  { to: '/app/crisis', label: 'Антикризис' },
-  { to: '/app/stress-test', label: 'Стресс-тест' },
-  { to: '/app/debts', label: 'Долги' },
-  { to: '/app/hr', label: 'Сотрудники' },
-  { to: '/app/inventory', label: 'Склад' },
-  { to: '/app/goals', label: 'Цели' },
-  { to: '/app/unit-economics', label: 'Unit-экономика' },
-  { to: '/app/report', label: 'Отчёт' },
-  { to: '/app/settings', label: 'Настройки' },
-]
+import { NAV_ITEMS, getModuleVisibleNavItems } from '@/lib/navigation'
+import { getEffectiveModules } from '@/types/modules'
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
+  const profile = useBusinessStore((s) => s.profile)
   const myRole = useBusinessStore((s) => s.myRole)
   const myAllowedDomains = useBusinessStore((s) => s.myAllowedDomains)
 
-  const visibleItems = NAV_ITEMS.filter(({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains))
+  const modules = getEffectiveModules(profile)
+  const visibleItems = getModuleVisibleNavItems(NAV_ITEMS, modules).filter(
+    ({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains),
+  )
 
   return (
     <div className="lg:hidden print:hidden">

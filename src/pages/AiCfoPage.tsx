@@ -14,14 +14,21 @@ import { buildFinancialContext } from '@/lib/ai/buildFinancialContext'
 import { generateId } from '@/lib/id'
 import type { AiCfoMessage } from '@/types/ai'
 import { cn } from '@/lib/utils'
+import { getEffectiveModules } from '@/types/modules'
 
-const SUGGESTIONS = [
-  'Почему моя прибыль такая низкая?',
-  'Что будет, если я увеличу рекламу на 30%?',
-  'Можно ли мне нанять ещё сотрудника?',
-  'Какую выручку мне нужно сделать для прибыли 500000?',
-  'Где я теряю больше всего денег?',
-  'Какие расходы стоит проверить в первую очередь?',
+interface Suggestion {
+  text: string
+  /** Если задан — подсказка показывается только при modules[module] === true (нет смысла спрашивать про наём, если в бизнесе нет модуля «Сотрудники»). */
+  module?: 'marketing' | 'hr'
+}
+
+const SUGGESTIONS: Suggestion[] = [
+  { text: 'Почему моя прибыль такая низкая?' },
+  { text: 'Что будет, если я увеличу рекламу на 30%?', module: 'marketing' },
+  { text: 'Можно ли мне нанять ещё сотрудника?', module: 'hr' },
+  { text: 'Какую выручку мне нужно сделать для прибыли 500000?' },
+  { text: 'Где я теряю больше всего денег?' },
+  { text: 'Какие расходы стоит проверить в первую очередь?' },
 ]
 
 export function AiCfoPage() {
@@ -40,6 +47,7 @@ export function AiCfoPage() {
   const cloudEnabled = useAuthStore((s) => s.cloudEnabled)
   const [draft, setDraft] = useState('')
   const [thinking, setThinking] = useState(false)
+  const modules = getEffectiveModules(profile)
 
   // Интеграция с YandexGPT (buildFinancialContext.ts, cfoEngineV2.ts, supabase/functions/ai-cfo)
   // полностью готова и протестирована, но пока не задеплоена (нужны Yandex Cloud API-ключ и
@@ -151,9 +159,9 @@ export function AiCfoPage() {
 
       {aiHistory.length === 0 && (
         <div className="flex flex-wrap gap-2">
-          {SUGGESTIONS.map((s) => (
-            <Button key={s} variant="secondary" size="sm" onClick={() => handleSend(s)}>
-              {s}
+          {SUGGESTIONS.filter((s) => !s.module || modules[s.module]).map((s) => (
+            <Button key={s.text} variant="secondary" size="sm" onClick={() => handleSend(s.text)}>
+              {s.text}
             </Button>
           ))}
         </div>

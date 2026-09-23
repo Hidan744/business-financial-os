@@ -1,61 +1,16 @@
 import { Link, NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  FileBarChart,
-  Wallet,
-  History,
-  FileSpreadsheet,
-  SlidersHorizontal,
-  Target,
-  TrendingUp,
-  Bot,
-  AlertTriangle,
-  Zap,
-  Landmark,
-  Scale,
-  Users,
-  Flag,
-  Calculator,
-  Percent,
-  FileText,
-  Settings,
-  Home,
-  Lock,
-  LockOpen,
-  Package,
-} from 'lucide-react'
+import { Home, Lock, LockOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessSwitcher } from './BusinessSwitcher'
 import { useBusinessStore } from '@/store/businessStore'
 import { useAccessGateStore } from '@/store/accessGateStore'
 import { isRouteUnlockedForMember } from '@/types/teamAccess'
-
-const NAV_ITEMS = [
-  { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/app/finance', label: 'Финансы', icon: FileBarChart },
-  { to: '/app/taxes', label: 'Налоги', icon: Percent },
-  { to: '/app/balance', label: 'Баланс', icon: Scale },
-  { to: '/app/cashflow', label: 'Cash Flow', icon: Wallet },
-  { to: '/app/history', label: 'История', icon: History },
-  { to: '/app/history-import', label: 'Импорт истории', icon: FileSpreadsheet },
-  { to: '/app/simulator', label: 'Симулятор', icon: SlidersHorizontal },
-  { to: '/app/sales', label: 'Продажи', icon: Target },
-  { to: '/app/forecast', label: 'Прогноз', icon: TrendingUp },
-  { to: '/app/plan', label: 'Финансовый план', icon: Target },
-  { to: '/app/ai-cfo', label: 'AI CFO', icon: Bot },
-  { to: '/app/crisis', label: 'Антикризис', icon: AlertTriangle },
-  { to: '/app/stress-test', label: 'Стресс-тест', icon: Zap },
-  { to: '/app/debts', label: 'Долги', icon: Landmark },
-  { to: '/app/hr', label: 'Сотрудники', icon: Users },
-  { to: '/app/inventory', label: 'Склад', icon: Package },
-  { to: '/app/goals', label: 'Цели', icon: Flag },
-  { to: '/app/unit-economics', label: 'Unit-экономика', icon: Calculator },
-  { to: '/app/report', label: 'Отчёт', icon: FileText },
-  { to: '/app/settings', label: 'Настройки', icon: Settings },
-]
+import { NAV_ITEMS, getModuleVisibleNavItems } from '@/lib/navigation'
+import { getEffectiveModules } from '@/types/modules'
 
 export function Sidebar() {
+  const profile = useBusinessStore((s) => s.profile)
   const protectedRoutes = useBusinessStore((s) => s.accessSettings.protectedRoutes)
   const myRole = useBusinessStore((s) => s.myRole)
   const myAllowedDomains = useBusinessStore((s) => s.myAllowedDomains)
@@ -63,10 +18,14 @@ export function Sidebar() {
   const unlockedRoutes = useAccessGateStore((s) => s.unlockedRoutes)
   const lock = useAccessGateStore((s) => s.lock)
 
+  const modules = getEffectiveModules(profile)
   // Участник команды видит в меню только разделы, которые ему реально открыты —
   // сервер и так не отдаст туда данные, поэтому нет смысла показывать пункт, который
   // при клике покажет "нет доступа". Настройки (управление доступом) — только владельцу.
-  const visibleItems = NAV_ITEMS.filter(({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains))
+  // Плюс: разделы неактивных модулей (склад/сотрудники/долги/unit-экономика) скрыты для всех.
+  const visibleItems = getModuleVisibleNavItems(NAV_ITEMS, modules).filter(
+    ({ to }) => myRole !== 'member' || isRouteUnlockedForMember(to, myAllowedDomains),
+  )
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">

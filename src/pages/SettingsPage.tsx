@@ -13,6 +13,8 @@ import { useBusinessStore } from '@/store/businessStore'
 import { useAuthStore } from '@/store/authStore'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 import { PROTECTABLE_ROUTES } from '@/types/access'
+import { MODULE_IDS, MODULE_LABELS, MODULE_HINTS, MODULE_UNLOCKS, getEffectiveModules } from '@/types/modules'
+import type { ModuleId } from '@/types/modules'
 
 const CURRENCIES = [
   { value: 'RUB', label: '₽ Российский рубль' },
@@ -44,6 +46,11 @@ export function SettingsPage() {
   const hasCloudTeamAccess = cloudEnabled && authStatus === 'authenticated' && myRole === 'owner'
 
   const hasOtherBusinesses = businessList.length > 1
+  const modules = getEffectiveModules(profile)
+
+  function toggleModule(id: ModuleId) {
+    updateProfile({ modules: { ...modules, [id]: !modules[id] } })
+  }
 
   async function handleRemoveCurrent() {
     if (!profile) return
@@ -156,6 +163,36 @@ export function SettingsPage() {
             >
               {profile.isSelfEmployed ? 'Включён' : 'Выключен'}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
+            Процессы бизнеса
+            <InfoTooltip>
+              Определяет, какие разделы, KPI и рекомендации показывать. Например, если у вас нет склада —
+              выключите его здесь, и раздел «Склад», DIO и оборачиваемость запасов исчезнут из меню и
+              показателей. Ничего не удаляется — включить обратно можно в любой момент.
+            </InfoTooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2">
+          <div className="grid sm:grid-cols-2 gap-2">
+            {MODULE_IDS.map((id) => (
+              <label
+                key={id}
+                className="flex items-start gap-2.5 rounded-xl border border-ink-800 px-3.5 py-3 cursor-pointer hover:bg-ink-900 transition-colors"
+              >
+                <Checkbox checked={modules[id]} onChange={() => toggleModule(id)} className="mt-0.5" />
+                <span>
+                  <span className="block text-sm text-ink-100">{MODULE_LABELS[id]}</span>
+                  <span className="block text-xs text-ink-500 mt-0.5">{MODULE_HINTS[id]}</span>
+                  <span className="block text-xs text-ink-600 mt-1">Включает: {MODULE_UNLOCKS[id].join(', ')}</span>
+                </span>
+              </label>
+            ))}
           </div>
         </CardContent>
       </Card>

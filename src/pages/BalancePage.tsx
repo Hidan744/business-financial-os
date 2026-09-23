@@ -7,14 +7,19 @@ import { buildBalanceSheetSnapshot, calculateWorkingCapitalMetrics } from '@/lib
 import { formatCurrency, cn } from '@/lib/utils'
 import { formatPeriodLabel } from '@/lib/period'
 import type { BalanceSheetInputs } from '@/types/finance'
+import { getEffectiveModules } from '@/types/modules'
 
 export function BalancePage() {
   const { inputs } = useFinancials()
+  const profile = useBusinessStore((s) => s.profile)
   const balanceSheet = useBusinessStore((s) => s.balanceSheet)
   const balanceSheetHistory = useBusinessStore((s) => s.balanceSheetHistory)
   const updateBalanceSheet = useBusinessStore((s) => s.updateBalanceSheet)
 
   if (!inputs || !balanceSheet) return null
+
+  const modules = getEffectiveModules(profile)
+  const showWorkingCapitalCard = modules.receivables || modules.inventory || modules.payables
 
   const snapshot = buildBalanceSheetSnapshot(balanceSheet)
   const sortedHistory = [...balanceSheetHistory].sort((a, b) => b.period.localeCompare(a.period))
@@ -119,12 +124,14 @@ export function BalancePage() {
               tooltip="Оборотные активы / Краткосрочные обязательства. Выше 1.5–2× обычно считается безопасным. «—» — если краткосрочных обязательств нет."
               accent={snapshot.currentRatio === null ? undefined : snapshot.currentRatio >= 1.5 ? 'positive' : snapshot.currentRatio >= 1 ? 'neutral' : 'negative'}
             />
-            <MetricTile
-              label="Долг / Капитал"
-              value={snapshot.debtToEquity !== null ? `${snapshot.debtToEquity.toFixed(2)}×` : '—'}
-              tooltip="Процентный долг (краткосрочные + долгосрочные кредиты, БЕЗ кредиторки) / Капитал. Меньше 1× — кредитов меньше капитала. «—» — если капитал отрицательный или нулевой."
-              accent={snapshot.debtToEquity === null ? undefined : snapshot.debtToEquity <= 1 ? 'positive' : snapshot.debtToEquity <= 2 ? 'neutral' : 'negative'}
-            />
+            {modules.debt && (
+              <MetricTile
+                label="Долг / Капитал"
+                value={snapshot.debtToEquity !== null ? `${snapshot.debtToEquity.toFixed(2)}×` : '—'}
+                tooltip="Процентный долг (краткосрочные + долгосрочные кредиты, БЕЗ кредиторки) / Капитал. Меньше 1× — кредитов меньше капитала. «—» — если капитал отрицательный или нулевой."
+                accent={snapshot.debtToEquity === null ? undefined : snapshot.debtToEquity <= 1 ? 'positive' : snapshot.debtToEquity <= 2 ? 'neutral' : 'negative'}
+              />
+            )}
             <MetricTile
               label="Обязательства / Капитал"
               value={snapshot.liabilitiesToEquity !== null ? `${snapshot.liabilitiesToEquity.toFixed(2)}×` : '—'}
@@ -141,47 +148,57 @@ export function BalancePage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-1.5">
-            Оборотный капитал
-            <InfoTooltip>
-              Цикл конвертации денег (CCC) — сколько дней деньги проходят путь от закупки до поступления от клиента.
-              Меньше — лучше: деньги быстрее возвращаются в оборот.
-            </InfoTooltip>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <div className="grid sm:grid-cols-4 gap-4">
-            <MetricTile
-              label="DSO — оборачиваемость дебиторки"
-              value={workingCapitalMetrics.dso !== null ? `${workingCapitalMetrics.dso.toFixed(1)} дн.` : '—'}
-              tooltip="За сколько дней в среднем поступают деньги от клиентов."
-            />
-            <MetricTile
-              label="DIO — оборачиваемость запасов"
-              value={workingCapitalMetrics.dio !== null ? `${workingCapitalMetrics.dio.toFixed(1)} дн.` : '—'}
-              tooltip="Сколько дней в среднем товар лежит на складе."
-            />
-            <MetricTile
-              label="DPO — оборачиваемость кредиторки"
-              value={workingCapitalMetrics.dpo !== null ? `${workingCapitalMetrics.dpo.toFixed(1)} дн.` : '—'}
-              tooltip="За сколько дней в среднем компания платит поставщикам."
-            />
-            <MetricTile
-              label="Цикл конвертации денег (CCC)"
-              value={workingCapitalMetrics.cashConversionCycleDays !== null ? `${workingCapitalMetrics.cashConversionCycleDays.toFixed(1)} дн.` : '—'}
-              accent={
-                workingCapitalMetrics.cashConversionCycleDays === null
-                  ? undefined
-                  : workingCapitalMetrics.cashConversionCycleDays <= 0
-                    ? 'positive'
-                    : 'neutral'
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {showWorkingCapitalCard && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5">
+              Оборотный капитал
+              <InfoTooltip>
+                Цикл конвертации денег (CCC) — сколько дней деньги проходят путь от закупки до поступления от клиента.
+                Меньше — лучше: деньги быстрее возвращаются в оборот.
+              </InfoTooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="grid sm:grid-cols-4 gap-4">
+              {modules.receivables && (
+                <MetricTile
+                  label="DSO — оборачиваемость дебиторки"
+                  value={workingCapitalMetrics.dso !== null ? `${workingCapitalMetrics.dso.toFixed(1)} дн.` : '—'}
+                  tooltip="За сколько дней в среднем поступают деньги от клиентов."
+                />
+              )}
+              {modules.inventory && (
+                <MetricTile
+                  label="DIO — оборачиваемость запасов"
+                  value={workingCapitalMetrics.dio !== null ? `${workingCapitalMetrics.dio.toFixed(1)} дн.` : '—'}
+                  tooltip="Сколько дней в среднем товар лежит на складе."
+                />
+              )}
+              {modules.payables && (
+                <MetricTile
+                  label="DPO — оборачиваемость кредиторки"
+                  value={workingCapitalMetrics.dpo !== null ? `${workingCapitalMetrics.dpo.toFixed(1)} дн.` : '—'}
+                  tooltip="За сколько дней в среднем компания платит поставщикам."
+                />
+              )}
+              {modules.receivables && modules.inventory && modules.payables && (
+                <MetricTile
+                  label="Цикл конвертации денег (CCC)"
+                  value={workingCapitalMetrics.cashConversionCycleDays !== null ? `${workingCapitalMetrics.cashConversionCycleDays.toFixed(1)} дн.` : '—'}
+                  accent={
+                    workingCapitalMetrics.cashConversionCycleDays === null
+                      ? undefined
+                      : workingCapitalMetrics.cashConversionCycleDays <= 0
+                        ? 'positive'
+                        : 'neutral'
+                  }
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {sortedHistory.length > 0 && (
         <Card>

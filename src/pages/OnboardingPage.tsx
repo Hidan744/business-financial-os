@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency } from '@/lib/utils'
@@ -12,11 +13,14 @@ import { generateBusinessId, generateId } from '@/lib/id'
 import type { BusinessType, AnalysisPeriod } from '@/types/business'
 import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 import type { FinancialInputs } from '@/types/finance'
+import type { ModuleFlags } from '@/types/modules'
+import { MODULE_IDS, MODULE_LABELS, MODULE_HINTS, BUSINESS_TYPE_MODULE_PRESETS } from '@/types/modules'
 
 interface FormData {
   name: string
   type: BusinessType
   period: AnalysisPeriod
+  modules: ModuleFlags
   revenue: string
   cogs: string
   fixedCosts: string
@@ -33,6 +37,7 @@ const INITIAL: FormData = {
   name: '',
   type: 'services',
   period: 'month',
+  modules: BUSINESS_TYPE_MODULE_PRESETS.services,
   revenue: '',
   cogs: '',
   fixedCosts: '',
@@ -45,7 +50,7 @@ const INITIAL: FormData = {
   salesCount: '',
 }
 
-type StepKind = 'text' | 'select-type' | 'select-period' | 'number'
+type StepKind = 'text' | 'select-type' | 'select-period' | 'modules' | 'number'
 
 interface StepDef {
   key: keyof FormData
@@ -60,6 +65,12 @@ const STEPS: StepDef[] = [
   { key: 'name', title: 'Как называется ваш бизнес?', kind: 'text', placeholder: 'Например, Urban Coffee' },
   { key: 'type', title: 'Какой у вас тип бизнеса?', kind: 'select-type' },
   { key: 'period', title: 'В каком периоде удобно анализировать финансы?', kind: 'select-period' },
+  {
+    key: 'modules',
+    title: 'Какие процессы есть в вашем бизнесе?',
+    kind: 'modules',
+    hint: 'Мы уже отметили типичный набор для выбранного типа бизнеса — поправьте под себя. Это решает, какие разделы и показатели вам покажет система (например, без склада не будет раздела «Склад» и DIO).',
+  },
   { key: 'revenue', title: 'Какая у вас выручка за период?', kind: 'number', suffix: '₽', hint: 'Все деньги, поступившие от продаж' },
   { key: 'cogs', title: 'Какая у вас себестоимость?', kind: 'number', suffix: '₽', hint: 'Прямые затраты на товар/услугу: закупка, материалы, производство' },
   { key: 'fixedCosts', title: 'Какие у вас постоянные расходы?', kind: 'number', suffix: '₽', hint: 'Аренда, коммуналка, сервисы — расходы, которые не зависят от объёма продаж' },
@@ -89,11 +100,21 @@ export function OnboardingPage() {
   const isLast = stepIndex === STEPS.length - 1
   const progressPct = ((stepIndex + 1) / STEPS.length) * 100
 
-  const currentValue = data[step.key]
-  const canProceed = step.kind === 'text' ? currentValue.trim().length > 0 : currentValue.trim().length > 0
+  const currentValue = step.kind === 'modules' ? '' : (data[step.key] as string)
+  const canProceed = step.kind === 'modules' ? true : currentValue.trim().length > 0
 
   function update(key: keyof FormData, value: string) {
     setData((d) => ({ ...d, [key]: value }))
+  }
+
+  function updateType(type: BusinessType) {
+    // Смена типа сбрасывает набор модулей на пресет нового типа — пользователь ещё не
+    // добрался до шага с модулями, поэтому переписывать его собственный выбор нечего.
+    setData((d) => ({ ...d, type, modules: BUSINESS_TYPE_MODULE_PRESETS[type] }))
+  }
+
+  function toggleModule(id: keyof ModuleFlags) {
+    setData((d) => ({ ...d, modules: { ...d.modules, [id]: !d.modules[id] } }))
   }
 
   async function handleNext() {
@@ -137,6 +158,7 @@ export function OnboardingPage() {
         currency: 'RUB',
         employeesCount: toNumber(data.employeesCount),
         createdAt: new Date().toISOString(),
+        modules: data.modules,
       },
       financialInputs,
     )
@@ -190,7 +212,7 @@ export function OnboardingPage() {
           )}
 
           {step.kind === 'select-type' && (
-            <Select value={data.type} onValueChange={(v) => update('type', v)}>
+            <Select value={data.type} onValueChange={(v) => updateType(v as BusinessType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -200,6 +222,23 @@ export function OnboardingPage() {
                 ))}
               </SelectContent>
             </Select>
+          )}
+
+          {step.kind === 'modules' && (
+            <div className="grid sm:grid-cols-2 gap-2">
+              {MODULE_IDS.map((id) => (
+                <label
+                  key={id}
+                  className="flex items-start gap-2.5 rounded-xl border border-ink-800 px-3.5 py-3 cursor-pointer hover:bg-ink-900 transition-colors"
+                >
+                  <Checkbox checked={data.modules[id]} onChange={() => toggleModule(id)} className="mt-0.5" />
+                  <span>
+                    <span className="block text-sm text-ink-100">{MODULE_LABELS[id]}</span>
+                    <span className="block text-xs text-ink-500 mt-0.5">{MODULE_HINTS[id]}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
           )}
 
           {step.kind === 'select-period' && (
