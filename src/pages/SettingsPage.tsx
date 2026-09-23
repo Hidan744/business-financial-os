@@ -15,6 +15,7 @@ import { BUSINESS_TYPE_LABELS, PERIOD_LABELS } from '@/types/business'
 import { PROTECTABLE_ROUTES } from '@/types/access'
 import { MODULE_IDS, MODULE_LABELS, MODULE_HINTS, MODULE_UNLOCKS, getEffectiveModules } from '@/types/modules'
 import type { ModuleId } from '@/types/modules'
+import { NAV_ITEMS, getModuleVisibleNavItems } from '@/lib/navigation'
 
 const CURRENCIES = [
   { value: 'RUB', label: '₽ Российский рубль' },
@@ -47,6 +48,10 @@ export function SettingsPage() {
 
   const hasOtherBusinesses = businessList.length > 1
   const modules = getEffectiveModules(profile)
+  // Не предлагаем закрыть PIN-ом раздел, которого и так нет в меню — список подстраивается
+  // под те же модули, что и навигация.
+  const protectableRoutePaths = new Set(getModuleVisibleNavItems(NAV_ITEMS, modules).map((i) => i.to))
+  const visibleProtectableRoutes = PROTECTABLE_ROUTES.filter((route) => protectableRoutePaths.has(route.path))
 
   function toggleModule(id: ModuleId) {
     updateProfile({ modules: { ...modules, [id]: !modules[id] } })
@@ -229,7 +234,7 @@ export function SettingsPage() {
             <div>
               <Label>Какие разделы закрыть PIN-ом</Label>
               <div className="mt-2 grid sm:grid-cols-2 gap-2">
-                {PROTECTABLE_ROUTES.map((route) => (
+                {visibleProtectableRoutes.map((route) => (
                   <label
                     key={route.path}
                     className="flex items-center gap-2.5 rounded-lg border border-ink-800 px-3 py-2 cursor-pointer hover:bg-ink-900"

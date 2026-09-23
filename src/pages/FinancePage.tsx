@@ -5,15 +5,22 @@ import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
 import { getFixedCosts } from '@/lib/finance/snapshot'
 import { InfoTooltip } from '@/components/ui/tooltip'
+import { getEffectiveModules } from '@/types/modules'
 
 export function FinancePage() {
   const { inputs, snapshot } = useFinancials()
+  const profile = useBusinessStore((s) => s.profile)
   const updateFinancialInputs = useBusinessStore((s) => s.updateFinancialInputs)
 
   if (!inputs || !snapshot) return null
 
   const customTotal = inputs.customExpenseLines.reduce((s, l) => s + l.amount, 0)
   const fixedCosts = getFixedCosts(inputs)
+  const modules = getEffectiveModules(profile)
+  // Скрываем поле только если модуль выключен И по нему реально нечего показывать — иначе
+  // расходы, уже введённые до выключения модуля, пропали бы из P&L незаметно для пользователя.
+  const showMarketing = modules.marketing || inputs.marketing !== 0 || (inputs.attributedRevenue ?? 0) !== 0
+  const showDebtInterest = modules.debt || inputs.loanInterest !== 0
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -41,20 +48,24 @@ export function FinancePage() {
 
           <PnLRow label="ФОТ" value={inputs.payroll} sign="-" editable onChange={(v) => updateFinancialInputs({ payroll: v })} />
           <PnLRow label="Аренда" value={inputs.rent} sign="-" editable onChange={(v) => updateFinancialInputs({ rent: v })} />
-          <PnLRow label="Реклама" value={inputs.marketing} sign="-" editable onChange={(v) => updateFinancialInputs({ marketing: v })} />
-          <PnLRow
-            label="  из них — выручка, атрибутированная рекламе"
-            value={inputs.attributedRevenue ?? 0}
-            editable
-            onChange={(v) => updateFinancialInputs({ attributedRevenue: v })}
-            extra={
-              <InfoTooltip>
-                Опционально: выручка, которую вы можете связать именно с рекламными каналами (например, из данных
-                рекламного кабинета или промокодов). Без этого поля показатель ROMI посчитать нельзя — система не
-                отличает продажи из рекламы от остальных сама.
-              </InfoTooltip>
-            }
-          />
+          {showMarketing && (
+            <>
+              <PnLRow label="Реклама" value={inputs.marketing} sign="-" editable onChange={(v) => updateFinancialInputs({ marketing: v })} />
+              <PnLRow
+                label="  из них — выручка, атрибутированная рекламе"
+                value={inputs.attributedRevenue ?? 0}
+                editable
+                onChange={(v) => updateFinancialInputs({ attributedRevenue: v })}
+                extra={
+                  <InfoTooltip>
+                    Опционально: выручка, которую вы можете связать именно с рекламными каналами (например, из данных
+                    рекламного кабинета или промокодов). Без этого поля показатель ROMI посчитать нельзя — система не
+                    отличает продажи из рекламы от остальных сама.
+                  </InfoTooltip>
+                }
+              />
+            </>
+          )}
           <PnLRow label="Логистика" value={inputs.logistics} sign="-" editable onChange={(v) => updateFinancialInputs({ logistics: v })} />
           <PnLRow
             label="Коммунальные расходы"
@@ -96,13 +107,15 @@ export function FinancePage() {
             extra={<InfoTooltip>Операционная прибыль после амортизации, но до процентов и налогов.</InfoTooltip>}
           />
 
-          <PnLRow
-            label="Проценты по кредитам"
-            value={inputs.loanInterest}
-            sign="-"
-            editable
-            onChange={(v) => updateFinancialInputs({ loanInterest: v })}
-          />
+          {showDebtInterest && (
+            <PnLRow
+              label="Проценты по кредитам"
+              value={inputs.loanInterest}
+              sign="-"
+              editable
+              onChange={(v) => updateFinancialInputs({ loanInterest: v })}
+            />
+          )}
           <PnLRow label="Налоги" value={inputs.taxes} sign="-" editable onChange={(v) => updateFinancialInputs({ taxes: v })} />
 
           <PnLRow label="Чистая прибыль" value={snapshot.netProfit} sign="=" kind="total" />

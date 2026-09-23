@@ -20,6 +20,11 @@ export function BalancePage() {
 
   const modules = getEffectiveModules(profile)
   const showWorkingCapitalCard = modules.receivables || modules.inventory || modules.payables
+  const showReceivables = modules.receivables || balanceSheet.currentAssets.receivables !== 0
+  const showInventory = modules.inventory || balanceSheet.currentAssets.inventory !== 0
+  const showPayables = modules.payables || balanceSheet.currentLiabilities.payables !== 0
+  const showDebt =
+    modules.debt || balanceSheet.currentLiabilities.shortTermDebt !== 0 || balanceSheet.nonCurrentLiabilities.longTermDebt !== 0
 
   const snapshot = buildBalanceSheetSnapshot(balanceSheet)
   const sortedHistory = [...balanceSheetHistory].sort((a, b) => b.period.localeCompare(a.period))
@@ -87,8 +92,12 @@ export function BalancePage() {
           <CardContent className="pt-2 space-y-1 divide-y divide-ink-800/60">
             <div className="pb-1 pt-1 text-xs font-medium text-ink-500">Оборотные</div>
             <CashFlowRow label="Деньги (касса, счета)" value={balanceSheet.currentAssets.cash} onChange={(v) => patchCurrentAssets({ cash: v })} />
-            <CashFlowRow label="Дебиторская задолженность" value={balanceSheet.currentAssets.receivables} onChange={(v) => patchCurrentAssets({ receivables: v })} />
-            <CashFlowRow label="Запасы, товары" value={balanceSheet.currentAssets.inventory} onChange={(v) => patchCurrentAssets({ inventory: v })} />
+            {showReceivables && (
+              <CashFlowRow label="Дебиторская задолженность" value={balanceSheet.currentAssets.receivables} onChange={(v) => patchCurrentAssets({ receivables: v })} />
+            )}
+            {showInventory && (
+              <CashFlowRow label="Запасы, товары" value={balanceSheet.currentAssets.inventory} onChange={(v) => patchCurrentAssets({ inventory: v })} />
+            )}
             <CashFlowRow label="Прочие оборотные активы" value={balanceSheet.currentAssets.other} onChange={(v) => patchCurrentAssets({ other: v })} />
             <div className="pb-1 pt-3 text-xs font-medium text-ink-500">Внеоборотные</div>
             <CashFlowRow label="Основные средства" value={balanceSheet.nonCurrentAssets.fixedAssets} onChange={(v) => patchNonCurrentAssets({ fixedAssets: v })} />
@@ -102,11 +111,17 @@ export function BalancePage() {
           </CardHeader>
           <CardContent className="pt-2 space-y-1 divide-y divide-ink-800/60">
             <div className="pb-1 pt-1 text-xs font-medium text-ink-500">Краткосрочные</div>
-            <CashFlowRow label="Кредиторская задолженность" value={balanceSheet.currentLiabilities.payables} onChange={(v) => patchCurrentLiabilities({ payables: v })} />
-            <CashFlowRow label="Краткосрочные кредиты" value={balanceSheet.currentLiabilities.shortTermDebt} onChange={(v) => patchCurrentLiabilities({ shortTermDebt: v })} />
+            {showPayables && (
+              <CashFlowRow label="Кредиторская задолженность" value={balanceSheet.currentLiabilities.payables} onChange={(v) => patchCurrentLiabilities({ payables: v })} />
+            )}
+            {showDebt && (
+              <CashFlowRow label="Краткосрочные кредиты" value={balanceSheet.currentLiabilities.shortTermDebt} onChange={(v) => patchCurrentLiabilities({ shortTermDebt: v })} />
+            )}
             <CashFlowRow label="Прочие краткосрочные обязательства" value={balanceSheet.currentLiabilities.other} onChange={(v) => patchCurrentLiabilities({ other: v })} />
             <div className="pb-1 pt-3 text-xs font-medium text-ink-500">Долгосрочные</div>
-            <CashFlowRow label="Долгосрочные кредиты" value={balanceSheet.nonCurrentLiabilities.longTermDebt} onChange={(v) => patchNonCurrentLiabilities({ longTermDebt: v })} />
+            {showDebt && (
+              <CashFlowRow label="Долгосрочные кредиты" value={balanceSheet.nonCurrentLiabilities.longTermDebt} onChange={(v) => patchNonCurrentLiabilities({ longTermDebt: v })} />
+            )}
             <CashFlowRow label="Прочие долгосрочные обязательства" value={balanceSheet.nonCurrentLiabilities.other} onChange={(v) => patchNonCurrentLiabilities({ other: v })} />
           </CardContent>
         </Card>
