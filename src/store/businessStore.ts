@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type { BusinessProfile } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
-import type { Employee, PlannedHire } from '@/types/hr'
+import type { Employee, EmployeeTask, PlannedHire, TaskAttachment, TaskStatus } from '@/types/hr'
+import { deleteAttachmentBlob } from '@/lib/storage/attachmentStore'
 import type { Goal } from '@/types/goal'
 import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 import { DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS } from '@/types/unitEconomics'
@@ -40,6 +41,7 @@ interface Store {
   balanceSheetHistory: BalanceSheetInputs[]
   employees: Employee[]
   plannedHires: PlannedHire[]
+  employeeTasks: EmployeeTask[]
   goals: Goal[]
   unitEconomics: UnitEconomicsAssumptions
   taxSettings: TaxSettings
@@ -85,6 +87,11 @@ interface Store {
   removePlannedHire: (id: string) => Promise<void>
   /** Записывает ФОТ, посчитанный по штату, в financialInputs.payroll. */
   syncPayrollFromEmployees: () => Promise<void>
+  addEmployeeTask: (task: Omit<EmployeeTask, 'id' | 'createdAt' | 'status' | 'attachments'>) => Promise<void>
+  setEmployeeTaskStatus: (id: string, status: TaskStatus) => Promise<void>
+  removeEmployeeTask: (id: string) => Promise<void>
+  addTaskAttachment: (taskId: string, attachment: Omit<TaskAttachment, 'id'>) => Promise<void>
+  removeTaskAttachment: (taskId: string, attachmentId: string) => Promise<void>
   addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>
   removeGoal: (id: string) => Promise<void>
   updateUnitEconomics: (patch: Partial<UnitEconomicsAssumptions>) => Promise<void>
@@ -156,6 +163,7 @@ function deriveActiveFields(businesses: Record<string, BusinessState>, activeBus
     balanceSheetHistory: active?.balanceSheetHistory ?? [],
     employees: active?.employees ?? [],
     plannedHires: active?.plannedHires ?? [],
+    employeeTasks: active?.employeeTasks ?? [],
     goals: active?.goals ?? [],
     unitEconomics: active?.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: active?.taxSettings ?? DEFAULT_TAX_SETTINGS,
@@ -197,6 +205,7 @@ async function mutateActiveBusiness(
     balanceSheetHistory: current.balanceSheetHistory ?? [],
     employees: current.employees ?? [],
     plannedHires: current.plannedHires ?? [],
+    employeeTasks: current.employeeTasks ?? [],
     goals: current.goals ?? [],
     unitEconomics: current.unitEconomics ?? DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
     taxSettings: current.taxSettings ?? DEFAULT_TAX_SETTINGS,
@@ -244,6 +253,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
   balanceSheetHistory: [],
   employees: [],
   plannedHires: [],
+  employeeTasks: [],
   goals: [],
   unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
   taxSettings: DEFAULT_TAX_SETTINGS,
@@ -308,6 +318,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       balanceSheetHistory: [],
       employees: [],
       plannedHires: [],
+      employeeTasks: [],
       goals: [],
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,
@@ -493,6 +504,46 @@ export const useBusinessStore = create<Store>((set, get) => ({
     }))
   },
 
+  addEmployeeTask: async (task) => {
+    const newTask: EmployeeTask = { ...task, id: generateId('task'), status: 'open', createdAt: new Date().toISOString(), attachments: [] }
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, employeeTasks: [...b.employeeTasks, newTask] }))
+  },
+
+  setEmployeeTaskStatus: async (id, status) => {
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      employeeTasks: b.employeeTasks.map((t) =>
+        t.id === id ? { ...t, status, completedAt: status === 'done' ? new Date().toISOString() : undefined } : t,
+      ),
+    }))
+  },
+
+  removeEmployeeTask: async (id) => {
+    const task = get().employeeTasks.find((t) => t.id === id)
+    await mutateActiveBusiness(get, set, (b) => ({ ...b, employeeTasks: b.employeeTasks.filter((t) => t.id !== id) }))
+    if (task) await Promise.all(task.attachments.map((a) => deleteAttachmentBlob(a.blobKey)))
+  },
+
+  addTaskAttachment: async (taskId, attachment) => {
+    const newAttachment: TaskAttachment = { ...attachment, id: generateId('att') }
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      employeeTasks: b.employeeTasks.map((t) => (t.id === taskId ? { ...t, attachments: [...t.attachments, newAttachment] } : t)),
+    }))
+  },
+
+  removeTaskAttachment: async (taskId, attachmentId) => {
+    const task = get().employeeTasks.find((t) => t.id === taskId)
+    const attachment = task?.attachments.find((a) => a.id === attachmentId)
+    await mutateActiveBusiness(get, set, (b) => ({
+      ...b,
+      employeeTasks: b.employeeTasks.map((t) =>
+        t.id === taskId ? { ...t, attachments: t.attachments.filter((a) => a.id !== attachmentId) } : t,
+      ),
+    }))
+    if (attachment) await deleteAttachmentBlob(attachment.blobKey)
+  },
+
   addGoal: async (goal) => {
     const newGoal = { ...goal, id: generateId('goal') }
     await mutateActiveBusiness(get, set, (b) => ({ ...b, goals: [...b.goals, newGoal] }))
@@ -565,6 +616,7 @@ export const useBusinessStore = create<Store>((set, get) => ({
       balanceSheetHistory: [],
       employees: [],
       plannedHires: [],
+      employeeTasks: [],
       goals: [],
       unitEconomics: DEFAULT_UNIT_ECONOMICS_ASSUMPTIONS,
       taxSettings: DEFAULT_TAX_SETTINGS,

@@ -18,3 +18,29 @@ export interface PlannedHire {
   salary: number
   startPeriod: string // 'YYYY-MM'
 }
+
+export type TaskStatus = 'open' | 'done'
+
+/** Прикреплённый к задаче файл (отчёт) — сам файл лежит в IndexedDB браузера, здесь только метаданные. */
+export interface TaskAttachment {
+  id: string
+  /** Ключ файла в IndexedDB (см. lib/storage/attachmentStore.ts). */
+  blobKey: string
+  name: string
+  mimeType: string
+  sizeBytes: number
+  uploadedAt: string // ISO
+}
+
+/** Задача, поставленная сотруднику — для контроля загрузки и своевременности выполнения. */
+export interface EmployeeTask {
+  id: string
+  employeeId: string
+  title: string
+  description?: string
+  dueDate?: string // 'YYYY-MM-DD'
+  status: TaskStatus
+  createdAt: string // ISO
+  completedAt?: string // ISO
+  attachments: TaskAttachment[]
+}

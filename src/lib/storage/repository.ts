@@ -2,7 +2,7 @@ import type { BusinessProfile } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { ForecastConfig, Scenario } from '@/types/scenario'
 import type { AiCfoMessage } from '@/types/ai'
-import type { Employee, PlannedHire } from '@/types/hr'
+import type { Employee, EmployeeTask, PlannedHire } from '@/types/hr'
 import type { Goal } from '@/types/goal'
 import type { UnitEconomicsAssumptions } from '@/types/unitEconomics'
 import type { TaxSettings } from '@/types/tax'
@@ -29,6 +29,8 @@ export interface BusinessState {
   employees: Employee[]
   /** Запланированные, ещё не нанятые сотрудники. */
   plannedHires: PlannedHire[]
+  /** Задачи, поставленные сотрудникам — для контроля загрузки и своевременности. */
+  employeeTasks: EmployeeTask[]
   /** Финансовые цели с трекингом прогресса. */
   goals: Goal[]
   /** Предположения для расчёта LTV/CAC (Unit Economics). */

@@ -41,7 +41,7 @@ export const DOMAIN_KEYS: Record<TeamDomain, string[]> = {
   cashflow: ['cashFlowInputs'],
   taxes: ['taxSettings'],
   forecast: ['forecastConfig'],
-  hr: ['employees', 'plannedHires'],
+  hr: ['employees', 'plannedHires', 'employeeTasks'],
   goals: ['goals'],
   unitEconomics: ['unitEconomics'],
   aiCfo: ['aiHistory'],

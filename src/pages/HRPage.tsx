@@ -5,21 +5,31 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InfoTooltip } from '@/components/ui/tooltip'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useBusinessStore } from '@/store/businessStore'
-import { calculateProjectedPayroll, calculateTotalPayroll } from '@/lib/finance/hr'
+import { useAccessGateStore } from '@/store/accessGateStore'
+import { calculateEmployeeWorkload, calculateProjectedPayroll, calculateTotalPayroll } from '@/lib/finance/hr'
 import { formatCurrency, cn } from '@/lib/utils'
 import { PROTECTABLE_ROUTES } from '@/types/access'
+import { EmployeeTaskPanel } from '@/features/hr/EmployeeTaskPanel'
 
 export function HRPage() {
   const inputs = useBusinessStore((s) => s.financialInputs)
   const employees = useBusinessStore((s) => s.employees)
   const plannedHires = useBusinessStore((s) => s.plannedHires)
+  const employeeTasks = useBusinessStore((s) => s.employeeTasks)
   const addEmployee = useBusinessStore((s) => s.addEmployee)
   const updateEmployee = useBusinessStore((s) => s.updateEmployee)
   const removeEmployee = useBusinessStore((s) => s.removeEmployee)
   const addPlannedHire = useBusinessStore((s) => s.addPlannedHire)
   const removePlannedHire = useBusinessStore((s) => s.removePlannedHire)
   const syncPayrollFromEmployees = useBusinessStore((s) => s.syncPayrollFromEmployees)
+  const addEmployeeTask = useBusinessStore((s) => s.addEmployeeTask)
+  const setEmployeeTaskStatus = useBusinessStore((s) => s.setEmployeeTaskStatus)
+  const removeEmployeeTask = useBusinessStore((s) => s.removeEmployeeTask)
+  const addTaskAttachment = useBusinessStore((s) => s.addTaskAttachment)
+  const removeTaskAttachment = useBusinessStore((s) => s.removeTaskAttachment)
+  const unlockedBy = useAccessGateStore((s) => s.unlockedBy)
 
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
@@ -33,6 +43,37 @@ export function HRPage() {
   const [expandedAccessId, setExpandedAccessId] = useState<string | null>(null)
 
   if (!inputs) return null
+
+  // Сотрудник открыл раздел своим личным PIN (а не PIN владельца) — показываем только его
+  // собственные задачи, без штата, зарплат и данных коллег. Для Supabase-бизнесов с реальным
+  // членством (myRole !== null) unlockedBy не участвует — там доступ уже разграничен доменами.
+  const selfEmployee = unlockedBy && unlockedBy !== 'owner' ? employees.find((e) => e.id === unlockedBy) : null
+  if (selfEmployee) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-50">Мои задачи</h1>
+          <p className="text-sm text-ink-500 mt-1">
+            {selfEmployee.name} · {selfEmployee.role}
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-5">
+            <EmployeeTaskPanel
+              employee={selfEmployee}
+              tasks={employeeTasks}
+              canManage={false}
+              addTask={() => {}}
+              removeTask={() => {}}
+              setTaskStatus={setEmployeeTaskStatus}
+              addAttachment={addTaskAttachment}
+              removeAttachment={removeTaskAttachment}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const totalPayroll = calculateTotalPayroll(employees)
   const projectedPayroll = calculateProjectedPayroll(employees, plannedHires)
@@ -107,6 +148,7 @@ export function HRPage() {
                     <th className="py-2 pr-4 font-medium">Должность</th>
                     <th className="py-2 pr-4 font-medium text-right">Зарплата</th>
                     <th className="py-2 pr-4 font-medium">Дата найма</th>
+                    <th className="py-2 pr-4 font-medium">Загрузка</th>
                     <th className="py-2 pr-4 font-medium">Доступ</th>
                     <th className="py-2 pr-2 font-medium w-8" />
                   </tr>
@@ -115,6 +157,7 @@ export function HRPage() {
                   {employees.map((e) => {
                     const isExpanded = expandedAccessId === e.id
                     const allowedCount = e.allowedRoutes?.length ?? 0
+                    const workload = calculateEmployeeWorkload(e.id, employeeTasks)
                     return (
                       <Fragment key={e.id}>
                         <tr className="border-b border-ink-800/60">
@@ -122,6 +165,21 @@ export function HRPage() {
                           <td className="py-2.5 pr-4 text-ink-300">{e.role}</td>
                           <td className="py-2.5 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(e.salary)}</td>
                           <td className="py-2.5 pr-4 text-ink-400">{e.hireDate}</td>
+                          <td className="py-2.5 pr-4">
+                            <button
+                              onClick={() => setExpandedAccessId(isExpanded ? null : e.id)}
+                              className={cn(
+                                'flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border transition-colors',
+                                workload.overdueCount > 0
+                                  ? 'border-negative-500/30 text-negative-400 bg-negative-500/10'
+                                  : 'border-ink-700 text-ink-400 hover:text-ink-100',
+                              )}
+                            >
+                              {workload.openCount} откр.
+                              {workload.overdueCount > 0 && ` · ${workload.overdueCount} просроч.`}
+                              {workload.efficiencyPct !== null && ` · ${workload.efficiencyPct}%`}
+                            </button>
+                          </td>
                           <td className="py-2.5 pr-4">
                             <button
                               onClick={() => setExpandedAccessId(isExpanded ? null : e.id)}
@@ -149,33 +207,53 @@ export function HRPage() {
                         </tr>
                         {isExpanded && (
                           <tr className="border-b border-ink-800/60 bg-ink-900/40">
-                            <td colSpan={6} className="py-4 px-4">
-                              <div className="max-w-sm mb-3">
-                                <label className="text-xs text-ink-400 block mb-1">PIN-код сотрудника</label>
-                                <Input
-                                  inputMode="numeric"
-                                  placeholder="Например, 4821"
-                                  value={e.pin ?? ''}
-                                  onChange={(ev) =>
-                                    updateEmployee(e.id, { pin: ev.target.value.replace(/\D/g, '').slice(0, 6) || null })
-                                  }
-                                />
-                              </div>
-                              <label className="text-xs text-ink-400 block mb-1.5">Какие защищённые PIN-ом разделы открывает этот сотрудник</label>
-                              <div className="grid sm:grid-cols-3 gap-2">
-                                {PROTECTABLE_ROUTES.map((route) => (
-                                  <label
-                                    key={route.path}
-                                    className="flex items-center gap-2 rounded-lg border border-ink-800 px-2.5 py-1.5 cursor-pointer hover:bg-ink-900"
-                                  >
-                                    <Checkbox
-                                      checked={(e.allowedRoutes ?? []).includes(route.path)}
-                                      onChange={() => toggleEmployeeRoute(e.id, route.path)}
+                            <td colSpan={7} className="py-4 px-4">
+                              <Tabs defaultValue="tasks">
+                                <TabsList className="mb-3">
+                                  <TabsTrigger value="tasks">Задачи и загрузка</TabsTrigger>
+                                  <TabsTrigger value="access">Доступ</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="tasks">
+                                  <EmployeeTaskPanel
+                                    employee={e}
+                                    tasks={employeeTasks}
+                                    canManage
+                                    addTask={(task) => addEmployeeTask(task)}
+                                    removeTask={removeEmployeeTask}
+                                    setTaskStatus={setEmployeeTaskStatus}
+                                    addAttachment={addTaskAttachment}
+                                    removeAttachment={removeTaskAttachment}
+                                  />
+                                </TabsContent>
+                                <TabsContent value="access">
+                                  <div className="max-w-sm mb-3">
+                                    <label className="text-xs text-ink-400 block mb-1">PIN-код сотрудника</label>
+                                    <Input
+                                      inputMode="numeric"
+                                      placeholder="Например, 4821"
+                                      value={e.pin ?? ''}
+                                      onChange={(ev) =>
+                                        updateEmployee(e.id, { pin: ev.target.value.replace(/\D/g, '').slice(0, 6) || null })
+                                      }
                                     />
-                                    <span className="text-xs text-ink-200">{route.label}</span>
-                                  </label>
-                                ))}
-                              </div>
+                                  </div>
+                                  <label className="text-xs text-ink-400 block mb-1.5">Какие защищённые PIN-ом разделы открывает этот сотрудник</label>
+                                  <div className="grid sm:grid-cols-3 gap-2">
+                                    {PROTECTABLE_ROUTES.map((route) => (
+                                      <label
+                                        key={route.path}
+                                        className="flex items-center gap-2 rounded-lg border border-ink-800 px-2.5 py-1.5 cursor-pointer hover:bg-ink-900"
+                                      >
+                                        <Checkbox
+                                          checked={(e.allowedRoutes ?? []).includes(route.path)}
+                                          onChange={() => toggleEmployeeRoute(e.id, route.path)}
+                                        />
+                                        <span className="text-xs text-ink-200">{route.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </TabsContent>
+                              </Tabs>
                             </td>
                           </tr>
                         )}

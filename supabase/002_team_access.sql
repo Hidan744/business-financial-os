@@ -23,7 +23,7 @@
 --   cashflow       -> cashFlowInputs
 --   taxes          -> taxSettings
 --   forecast       -> forecastConfig
---   hr             -> employees, plannedHires
+--   hr             -> employees, plannedHires, employeeTasks
 --   goals          -> goals
 --   unitEconomics  -> unitEconomics
 --   aiCfo          -> aiHistory
@@ -217,7 +217,8 @@ begin
   if 'hr' = any(v_domains) then
     v_result := v_result || jsonb_build_object(
       'employees', coalesce(v_data->'employees', '[]'::jsonb),
-      'plannedHires', coalesce(v_data->'plannedHires', '[]'::jsonb)
+      'plannedHires', coalesce(v_data->'plannedHires', '[]'::jsonb),
+      'employeeTasks', coalesce(v_data->'employeeTasks', '[]'::jsonb)
     );
   end if;
   if 'goals' = any(v_domains) then
@@ -297,6 +298,7 @@ begin
     when 'forecastConfig' then 'forecast'
     when 'employees' then 'hr'
     when 'plannedHires' then 'hr'
+    when 'employeeTasks' then 'hr'
     when 'goals' then 'goals'
     when 'unitEconomics' then 'unitEconomics'
     when 'aiHistory' then 'aiCfo'

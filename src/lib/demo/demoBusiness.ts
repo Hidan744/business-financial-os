@@ -23,6 +23,11 @@ function daysAgo(n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Та же логика, что и daysAgo, но в будущее — для сроков задач сотрудников. */
+function daysFromNow(n: number): string {
+  return daysAgo(-n)
+}
+
 /**
  * Магазин собственного бренда одежды: выше себестоимость и реклама, чем у кафе (пошив
  * коллекций, продвижение бренда), ФОТ и аренда почти постоянны месяц к месяцу.
@@ -179,12 +184,108 @@ export function createDemoBusiness(): BusinessState {
         pin: '1111',
         allowedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report'],
       },
-      { id: 'emp2', name: 'Максим Орлов', role: 'Продавец-консультант', salary: 60000, hireDate: '2023-06-15' },
+      {
+        id: 'emp2',
+        name: 'Максим Орлов',
+        role: 'Продавец-консультант',
+        salary: 60000,
+        hireDate: '2023-06-15',
+        pin: '2222',
+        allowedRoutes: ['/app/hr'],
+      },
       { id: 'emp3', name: 'Дарья Кузьмина', role: 'Продавец-консультант', salary: 60000, hireDate: '2024-01-10' },
       { id: 'emp4', name: 'Полина Егорова', role: 'Швея-технолог', salary: 65000, hireDate: '2023-09-01' },
       { id: 'emp5', name: 'Артём Николаев', role: 'Курьер', salary: 65000, hireDate: '2024-04-20' },
     ],
     plannedHires: [{ id: 'hire1', role: 'Маркетолог', salary: 70000, startPeriod: shiftPeriod(CURRENT_PERIOD, -3) }],
+    employeeTasks: [
+      {
+        id: 'task1',
+        employeeId: 'emp1',
+        title: 'Сверить остатки склада с учётной системой',
+        status: 'done',
+        createdAt: `${daysAgo(20)}T09:00:00.000Z`,
+        dueDate: daysAgo(14),
+        completedAt: `${daysAgo(15)}T18:00:00.000Z`,
+        attachments: [],
+      },
+      {
+        id: 'task2',
+        employeeId: 'emp1',
+        title: 'Подготовить отчёт по итогам месяца для инвестора',
+        description: 'P&L, cash flow, план на следующий месяц',
+        status: 'open',
+        createdAt: `${daysAgo(5)}T09:00:00.000Z`,
+        dueDate: daysFromNow(2),
+        attachments: [],
+      },
+      {
+        id: 'task3',
+        employeeId: 'emp2',
+        title: 'Выложить новую коллекцию на витрину',
+        status: 'done',
+        createdAt: `${daysAgo(10)}T09:00:00.000Z`,
+        dueDate: daysAgo(6),
+        completedAt: `${daysAgo(7)}T15:00:00.000Z`,
+        attachments: [],
+      },
+      {
+        id: 'task4',
+        employeeId: 'emp2',
+        title: 'Провести переучёт кассы за неделю',
+        status: 'open',
+        createdAt: `${daysAgo(9)}T09:00:00.000Z`,
+        dueDate: daysAgo(2),
+        attachments: [],
+      },
+      {
+        id: 'task5',
+        employeeId: 'emp2',
+        title: 'Обзвонить клиентов по брошенным корзинам',
+        status: 'open',
+        createdAt: `${daysAgo(2)}T09:00:00.000Z`,
+        dueDate: daysFromNow(3),
+        attachments: [],
+      },
+      {
+        id: 'task6',
+        employeeId: 'emp3',
+        title: 'Обучить нового стажёра работе с кассой',
+        status: 'open',
+        createdAt: `${daysAgo(12)}T09:00:00.000Z`,
+        dueDate: daysAgo(4),
+        attachments: [],
+      },
+      {
+        id: 'task7',
+        employeeId: 'emp4',
+        title: 'Пошить пробный образец для весенней коллекции',
+        status: 'done',
+        createdAt: `${daysAgo(18)}T09:00:00.000Z`,
+        dueDate: daysAgo(10),
+        completedAt: `${daysAgo(11)}T12:00:00.000Z`,
+        attachments: [],
+      },
+      {
+        id: 'task8',
+        employeeId: 'emp4',
+        title: 'Составить спецификацию тканей на следующую партию',
+        status: 'done',
+        createdAt: `${daysAgo(8)}T09:00:00.000Z`,
+        dueDate: daysAgo(3),
+        completedAt: `${daysAgo(1)}T12:00:00.000Z`,
+        attachments: [],
+      },
+      {
+        id: 'task9',
+        employeeId: 'emp5',
+        title: 'Развезти заказы по точкам самовывоза',
+        status: 'open',
+        createdAt: `${daysAgo(1)}T09:00:00.000Z`,
+        dueDate: daysFromNow(1),
+        attachments: [],
+      },
+    ],
     goals: [
       {
         id: 'goal1',
@@ -213,7 +314,7 @@ export function createDemoBusiness(): BusinessState {
       patentAnnualCost: 0,
     },
     accessSettings: {
-      protectedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report'],
+      protectedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report', '/app/hr'],
       ownerPin: '1234',
     },
     // Остаток считается по движениям, а не задаётся числом — специально оставлены все три
