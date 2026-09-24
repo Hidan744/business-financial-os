@@ -198,7 +198,7 @@ function ReportMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-ink-500">{label}</div>
-      <div className="font-semibold text-ink-50">{value}</div>
+      <div className="font-semibold text-ink-50 whitespace-nowrap">{value}</div>
     </div>
   )
 }

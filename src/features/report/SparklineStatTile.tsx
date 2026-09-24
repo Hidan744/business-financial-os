@@ -33,7 +33,7 @@ export function SparklineStatTile<T extends object>({
           </div>
           <div
             className={cn(
-              'font-display text-2xl font-bold tracking-tight mt-1',
+              'font-display text-2xl font-bold tracking-tight mt-1 whitespace-nowrap',
               accent === 'positive' && 'text-positive-500',
               accent === 'negative' && 'text-negative-500',
               accent === 'neutral' && 'text-ink-50',
