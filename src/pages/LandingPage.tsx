@@ -154,8 +154,19 @@ export function LandingPage() {
       </section>
 
       <footer className="border-t border-ink-800 py-8">
-        <div className="max-w-6xl mx-auto px-4 text-xs text-ink-500 text-center">
-          Business Financial OS — MVP. Все расчёты выполняются локально в вашем браузере.
+        <div className="max-w-6xl mx-auto px-4 text-xs text-ink-500 text-center space-y-1.5">
+          <p>Business Financial OS — MVP. Все расчёты выполняются локально в вашем браузере.</p>
+          <p>
+            Сделано в{' '}
+            <a
+              href="https://vinakovlab.ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink-400 hover:text-ink-200 underline underline-offset-2"
+            >
+              vinakovlab.ru
+            </a>
+          </p>
         </div>
       </footer>
     </div>
