@@ -312,6 +312,8 @@ export function createDemoBusiness(): BusinessState {
       osnProfitTaxRatePct: 20,
       npdRatePct: 6,
       patentAnnualCost: 0,
+      isVatPayer: true,
+      vatRatePct: 20,
     },
     accessSettings: {
       protectedRoutes: ['/app/finance', '/app/taxes', '/app/balance', '/app/debts', '/app/report', '/app/hr'],
