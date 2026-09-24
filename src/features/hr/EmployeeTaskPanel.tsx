@@ -209,14 +209,14 @@ export function EmployeeTaskPanel({
             <label className="text-xs text-ink-400 block mb-1">Новая задача</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например, сверить кассу" />
           </div>
-          <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+          <div className="flex flex-wrap items-end gap-2">
             <div>
               <label className="text-xs text-ink-400 block mb-1">Начало (дата и время)</label>
-              <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input type="datetime-local" className="w-auto" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
               <label className="text-xs text-ink-400 block mb-1">Срок (дата и время)</label>
-              <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <Input type="datetime-local" className="w-auto" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
             </div>
             <Button onClick={submitTask} variant="secondary">
               <Plus className="size-3.5" /> Добавить
