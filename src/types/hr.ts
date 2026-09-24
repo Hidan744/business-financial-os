@@ -38,7 +38,10 @@ export interface EmployeeTask {
   employeeId: string
   title: string
   description?: string
-  /** Когда приступить к задаче — 'YYYY-MM-DD', без времени. */
+  /**
+   * Когда приступить к задаче. 'YYYY-MM-DD' (старые задачи, без времени) или
+   * 'YYYY-MM-DDTHH:mm' (datetime-local) — чисто отображается, в расчёты не участвует.
+   */
   startDate?: string
   /**
    * Срок сдачи. 'YYYY-MM-DD' (весь день, старые задачи и когда время не важно) или

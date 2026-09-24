@@ -18,8 +18,8 @@ function formatFileSize(bytes: number): string {
 }
 
 /** 'YYYY-MM-DD' остаётся как есть, 'YYYY-MM-DDTHH:mm' (datetime-local) — "YYYY-MM-DD HH:mm". */
-function formatDueDate(dueDate: string): string {
-  return dueDate.replace('T', ' ')
+function formatTaskDate(date: string): string {
+  return date.replace('T', ' ')
 }
 
 interface EmployeeTaskPanelProps {
@@ -138,10 +138,10 @@ export function EmployeeTaskPanel({
                   <div className={cn('text-sm', task.status === 'done' ? 'text-ink-500 line-through' : 'text-ink-100')}>{task.title}</div>
                   {task.description && <div className="text-xs text-ink-500 mt-0.5">{task.description}</div>}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                    {task.startDate && <span className="text-xs text-ink-500">Начало: {task.startDate}</span>}
+                    {task.startDate && <span className="text-xs text-ink-500">Начало: {formatTaskDate(task.startDate)}</span>}
                     {task.dueDate && (
                       <span className={cn('text-xs', isOverdue ? 'text-negative-500 font-medium' : 'text-ink-500')}>
-                        Срок: {formatDueDate(task.dueDate)}
+                        Срок: {formatTaskDate(task.dueDate)}
                         {isOverdue && ' · просрочено'}
                       </span>
                     )}
@@ -204,22 +204,24 @@ export function EmployeeTaskPanel({
       </div>
 
       {canManage && (
-        <div className="grid sm:grid-cols-5 gap-2 items-end pt-1">
-          <div className="sm:col-span-2">
+        <div className="space-y-2 pt-1">
+          <div>
             <label className="text-xs text-ink-400 block mb-1">Новая задача</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например, сверить кассу" />
           </div>
-          <div className="sm:col-span-1">
-            <label className="text-xs text-ink-400 block mb-1">Начало</label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <div className="grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+            <div>
+              <label className="text-xs text-ink-400 block mb-1">Начало (дата и время)</label>
+              <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-ink-400 block mb-1">Срок (дата и время)</label>
+              <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+            <Button onClick={submitTask} variant="secondary">
+              <Plus className="size-3.5" /> Добавить
+            </Button>
           </div>
-          <div className="sm:col-span-1">
-            <label className="text-xs text-ink-400 block mb-1">Срок (дата и время)</label>
-            <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-          </div>
-          <Button onClick={submitTask} className="sm:col-span-1" variant="secondary">
-            <Plus className="size-3.5" /> Добавить
-          </Button>
         </div>
       )}
     </div>
