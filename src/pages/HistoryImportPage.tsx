@@ -147,7 +147,7 @@ export function HistoryImportPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-ink-500 border-b border-ink-800">
-                      <th className="py-2 pr-4 font-medium">Период</th>
+                      <th className="py-2 pr-4 font-medium whitespace-nowrap">Период</th>
                       <th className="py-2 pr-4 font-medium text-right">Выручка</th>
                     </tr>
                   </thead>
@@ -156,7 +156,7 @@ export function HistoryImportPage() {
                       .sort((a, b) => a.period.localeCompare(b.period))
                       .map((r) => (
                         <tr key={r.period} className="border-b border-ink-800/60">
-                          <td className="py-2 pr-4 text-ink-300">{formatPeriodLabel(r.period)}</td>
+                          <td className="py-2 pr-4 text-ink-300 whitespace-nowrap">{formatPeriodLabel(r.period)}</td>
                           <td className="py-2 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(r.revenue)}</td>
                         </tr>
                       ))}

@@ -153,7 +153,7 @@ export function GoalsPage() {
             </div>
             <div>
               <Label>Срок</Label>
-              <Input type="month" value={targetPeriod} onChange={(e) => setTargetPeriod(e.target.value)} className="mt-2" />
+              <Input type="month" value={targetPeriod} onChange={(e) => setTargetPeriod(e.target.value)} className="mt-2 w-auto" />
             </div>
           </div>
 

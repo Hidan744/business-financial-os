@@ -240,7 +240,7 @@ export function BalancePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-ink-500 text-left">
-                    <th className="font-medium pb-2 pr-4">Период</th>
+                    <th className="font-medium pb-2 pr-4 whitespace-nowrap">Период</th>
                     <th className="font-medium pb-2 pr-4">Деньги</th>
                     <th className="font-medium pb-2 pr-4">Активы</th>
                     <th className="font-medium pb-2">Капитал</th>
@@ -287,7 +287,7 @@ function BalanceHistoryRow({
 }) {
   return (
     <tr className={cn('text-sm', current && 'text-ink-50 font-medium')}>
-      <td className="py-2 pr-4 text-ink-300">{label ?? formatPeriodLabel(period)}</td>
+      <td className="py-2 pr-4 text-ink-300 whitespace-nowrap">{label ?? formatPeriodLabel(period)}</td>
       <td className="py-2 pr-4">{formatCurrency(cash)}</td>
       <td className="py-2 pr-4">{formatCurrency(snapshot.totalAssets)}</td>
       <td className={cn('py-2', snapshot.equity >= 0 ? 'text-positive-500' : 'text-negative-500')}>{formatCurrency(snapshot.equity)}</td>

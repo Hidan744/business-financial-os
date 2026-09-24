@@ -280,7 +280,7 @@ export function HRPage() {
             </div>
             <div className="sm:col-span-1">
               <label className="text-xs text-ink-400 block mb-1">Дата найма</label>
-              <Input type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
+              <Input type="date" className="w-auto" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
             </div>
             <Button onClick={submitEmployee} className="sm:col-span-1">
               Добавить
@@ -304,7 +304,7 @@ export function HRPage() {
                   <tr className="text-left text-ink-500 border-b border-ink-800">
                     <th className="py-2 pr-4 font-medium">Должность</th>
                     <th className="py-2 pr-4 font-medium text-right">Зарплата</th>
-                    <th className="py-2 pr-4 font-medium">С какого периода</th>
+                    <th className="py-2 pr-4 font-medium whitespace-nowrap">С какого периода</th>
                     <th className="py-2 pr-2 font-medium w-8" />
                   </tr>
                 </thead>
@@ -313,7 +313,7 @@ export function HRPage() {
                     <tr key={h.id} className="border-b border-ink-800/60">
                       <td className="py-2.5 pr-4 text-ink-200">{h.role}</td>
                       <td className="py-2.5 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(h.salary)}</td>
-                      <td className="py-2.5 pr-4 text-ink-400">{h.startPeriod}</td>
+                      <td className="py-2.5 pr-4 text-ink-400 whitespace-nowrap">{h.startPeriod}</td>
                       <td className="py-2.5 pr-2 text-right">
                         <button
                           onClick={() => removePlannedHire(h.id)}
@@ -341,7 +341,7 @@ export function HRPage() {
             </div>
             <div className="sm:col-span-1">
               <label className="text-xs text-ink-400 block mb-1">С периода</label>
-              <Input type="month" value={hirePeriod} onChange={(e) => setHirePeriod(e.target.value)} />
+              <Input type="month" className="w-auto" value={hirePeriod} onChange={(e) => setHirePeriod(e.target.value)} />
             </div>
             <Button onClick={submitPlannedHire} className="sm:col-span-1">
               Добавить

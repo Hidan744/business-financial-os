@@ -28,7 +28,7 @@ export function HistoryTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left text-ink-500 border-b border-ink-800">
-            <th className="py-2 pr-4 font-medium">Период</th>
+            <th className="py-2 pr-4 font-medium whitespace-nowrap">Период</th>
             <th className="py-2 pr-4 font-medium text-right">Выручка</th>
             <th className="py-2 pr-4 font-medium text-right">Чистая прибыль</th>
             <th className="py-2 pr-4 font-medium text-right">EBITDA маржа</th>
@@ -40,7 +40,7 @@ export function HistoryTable({
             const snapshot = buildFinancialSnapshot(inputs)
             return (
               <tr key={inputs.period} className="border-b border-ink-800/60">
-                <td className="py-2.5 pr-4 text-ink-200 capitalize">
+                <td className="py-2.5 pr-4 text-ink-200 capitalize whitespace-nowrap">
                   {formatPeriodLabel(inputs.period)}
                   {isCurrent && <span className="ml-2 text-xs text-brand-400">текущий</span>}
                 </td>

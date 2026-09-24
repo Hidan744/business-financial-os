@@ -64,7 +64,7 @@ export function InventoryCalendarCard({ products, stockMovements }: { products: 
           <>
             <div className="max-w-[200px]">
               <Label className="text-xs">Дата</Label>
-              <Input type="date" className="mt-1" value={day} onChange={(e) => setDay(e.target.value)} max={today()} />
+              <Input type="date" className="mt-1 w-auto" value={day} onChange={(e) => setDay(e.target.value)} max={today()} />
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <MiniStat label="Стоимость склада на конец дня" value={formatCurrency(dayValue)} sub={formatDelta(dayValue - dayPrevValue)} accentFromDelta={dayValue - dayPrevValue} />
@@ -137,11 +137,11 @@ function PeriodPicker({ label, from, to, onFrom, onTo }: { label: string; from: 
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label className="text-[11px]">С</Label>
-          <Input type="date" className="mt-1" value={from} onChange={(e) => onFrom(e.target.value)} max={today()} />
+          <Input type="date" className="mt-1 w-auto" value={from} onChange={(e) => onFrom(e.target.value)} max={today()} />
         </div>
         <div>
           <Label className="text-[11px]">По</Label>
-          <Input type="date" className="mt-1" value={to} onChange={(e) => onTo(e.target.value)} max={today()} />
+          <Input type="date" className="mt-1 w-auto" value={to} onChange={(e) => onTo(e.target.value)} max={today()} />
         </div>
       </div>
     </div>

@@ -252,7 +252,7 @@ export function InventoryPage() {
                 </div>
                 <div>
                   <Label className="text-xs">Дата</Label>
-                  <Input type="date" className="mt-1" value={moveDate} onChange={(e) => setMoveDate(e.target.value)} />
+                  <Input type="date" className="mt-1 w-auto" value={moveDate} onChange={(e) => setMoveDate(e.target.value)} />
                 </div>
               </div>
               <div className="grid sm:grid-cols-3 gap-2 items-end">
@@ -280,7 +280,7 @@ export function InventoryPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-ink-500 border-b border-ink-800">
-                    <th className="py-2 pr-4 font-medium">Дата</th>
+                    <th className="py-2 pr-4 font-medium whitespace-nowrap">Дата</th>
                     <th className="py-2 pr-4 font-medium">Товар</th>
                     <th className="py-2 pr-4 font-medium">Тип</th>
                     <th className="py-2 pr-4 font-medium text-right">Кол-во</th>
@@ -293,7 +293,7 @@ export function InventoryPage() {
                     const p = products.find((pr) => pr.id === m.productId)
                     return (
                       <tr key={m.id} className="border-b border-ink-800/60">
-                        <td className="py-2 pr-4 text-ink-400">{m.date}</td>
+                        <td className="py-2 pr-4 text-ink-400 whitespace-nowrap">{m.date}</td>
                         <td className="py-2 pr-4 text-ink-200">{p?.name ?? '—'}</td>
                         <td className="py-2 pr-4 text-ink-300">{STOCK_MOVEMENT_TYPE_LABELS[m.type]}</td>
                         <td className="py-2 pr-4 text-right text-ink-100 tabular-nums">{m.quantity}</td>
