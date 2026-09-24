@@ -107,7 +107,7 @@ export function HRPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <div>
         <h1 className="text-2xl font-semibold text-ink-50">Сотрудники</h1>
         <p className="text-sm text-ink-500 mt-1">Штат по сотрудникам и план найма — ФОТ считается снизу вверх.</p>
@@ -147,7 +147,7 @@ export function HRPage() {
                     <th className="py-2 pr-4 font-medium">Имя</th>
                     <th className="py-2 pr-4 font-medium">Должность</th>
                     <th className="py-2 pr-4 font-medium text-right">Зарплата</th>
-                    <th className="py-2 pr-4 font-medium">Дата найма</th>
+                    <th className="py-2 pr-4 font-medium whitespace-nowrap">Дата найма</th>
                     <th className="py-2 pr-4 font-medium">Загрузка</th>
                     <th className="py-2 pr-4 font-medium">Доступ</th>
                     <th className="py-2 pr-2 font-medium w-8" />
@@ -164,7 +164,7 @@ export function HRPage() {
                           <td className="py-2.5 pr-4 text-ink-200">{e.name}</td>
                           <td className="py-2.5 pr-4 text-ink-300">{e.role}</td>
                           <td className="py-2.5 pr-4 text-right text-ink-100 tabular-nums">{formatCurrency(e.salary)}</td>
-                          <td className="py-2.5 pr-4 text-ink-400">{e.hireDate}</td>
+                          <td className="py-2.5 pr-4 text-ink-400 whitespace-nowrap">{e.hireDate}</td>
                           <td className="py-2.5 pr-4">
                             <button
                               onClick={() => setExpandedAccessId(isExpanded ? null : e.id)}
