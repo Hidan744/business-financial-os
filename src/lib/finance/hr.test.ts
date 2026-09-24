@@ -105,4 +105,33 @@ describe('calculateEmployeeWorkload', () => {
     expect(result.doneCount).toBe(2)
     expect(result.efficiencyPct).toBe(100)
   })
+
+  it('treats a date-only due date as due by end of that day, not the start of it', () => {
+    // asOf is 2026-09-24T12:00 — a task due "today" (date-only) must not already be overdue.
+    const tasks = [makeTask({ status: 'open', dueDate: '2026-09-24' })]
+    const result = calculateEmployeeWorkload('e1', tasks, asOf)
+    expect(result.overdueCount).toBe(0)
+  })
+
+  it('flags an open task as overdue once a datetime-local due date/time has passed', () => {
+    const tasks = [makeTask({ status: 'open', dueDate: '2026-09-24T09:00' })]
+    const result = calculateEmployeeWorkload('e1', tasks, asOf)
+    expect(result.overdueCount).toBe(1)
+  })
+
+  it('does not flag an open task overdue while its datetime-local due date/time is still ahead', () => {
+    const tasks = [makeTask({ status: 'open', dueDate: '2026-09-24T18:00' })]
+    const result = calculateEmployeeWorkload('e1', tasks, asOf)
+    expect(result.overdueCount).toBe(0)
+  })
+
+  it('treats a datetime-local due date as the exact deadline, not end of day, for on-time efficiency', () => {
+    const tasks = [
+      // Due 2026-09-10 12:00, completed 18:00 same day — late by the exact deadline, even
+      // though it would count as "on time" under the old date-only (end-of-day) rule.
+      makeTask({ status: 'done', dueDate: '2026-09-10T12:00', completedAt: '2026-09-10T18:00:00.000Z' }),
+    ]
+    const result = calculateEmployeeWorkload('e1', tasks, asOf)
+    expect(result.efficiencyPct).toBe(0)
+  })
 })

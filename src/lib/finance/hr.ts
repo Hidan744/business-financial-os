@@ -23,6 +23,15 @@ export interface EmployeeWorkload {
 }
 
 /**
+ * Момент дедлайна как Date. dueDate без времени ('YYYY-MM-DD') считается "до конца дня" —
+ * иначе задача со сроком "сегодня" была бы просрочена уже в 00:01. dueDate с временем
+ * ('YYYY-MM-DDTHH:mm', из datetime-local) используется как есть, секунда в секунду.
+ */
+export function dueDateDeadline(dueDate: string): Date {
+  return new Date(dueDate.includes('T') ? dueDate : `${dueDate}T23:59:59`)
+}
+
+/**
  * Загрузка и своевременность выполнения одного сотрудника по его задачам.
  * asOf — точка отсчёта "сейчас" (по умолчанию реальная дата), передаётся явно для тестируемости.
  */
@@ -30,10 +39,10 @@ export function calculateEmployeeWorkload(employeeId: string, tasks: EmployeeTas
   const own = tasks.filter((t) => t.employeeId === employeeId)
   const open = own.filter((t) => t.status === 'open')
   const done = own.filter((t) => t.status === 'done')
-  const overdue = open.filter((t) => t.dueDate && new Date(t.dueDate) < asOf)
+  const overdue = open.filter((t) => t.dueDate && dueDateDeadline(t.dueDate) < asOf)
 
   const doneWithDueDate = done.filter((t) => t.dueDate)
-  const doneOnTime = doneWithDueDate.filter((t) => t.completedAt && new Date(t.completedAt) <= new Date(`${t.dueDate}T23:59:59`))
+  const doneOnTime = doneWithDueDate.filter((t) => t.completedAt && new Date(t.completedAt) <= dueDateDeadline(t.dueDate!))
 
   return {
     employeeId,

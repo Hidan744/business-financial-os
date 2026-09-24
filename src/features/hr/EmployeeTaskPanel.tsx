@@ -3,7 +3,7 @@ import { CheckCircle2, Circle, Paperclip, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InfoTooltip } from '@/components/ui/tooltip'
-import { calculateEmployeeWorkload } from '@/lib/finance/hr'
+import { calculateEmployeeWorkload, dueDateDeadline } from '@/lib/finance/hr'
 import { getAttachmentBlob, saveAttachmentBlob } from '@/lib/storage/attachmentStore'
 import { generateId } from '@/lib/id'
 import { cn } from '@/lib/utils'
@@ -17,12 +17,17 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
+/** 'YYYY-MM-DD' остаётся как есть, 'YYYY-MM-DDTHH:mm' (datetime-local) — "YYYY-MM-DD HH:mm". */
+function formatDueDate(dueDate: string): string {
+  return dueDate.replace('T', ' ')
+}
+
 interface EmployeeTaskPanelProps {
   employee: Employee
   tasks: EmployeeTask[]
   /** Может ставить новые задачи и удалять их — статус и вложения доступны всем (владельцу и самому сотруднику). */
   canManage: boolean
-  addTask: (task: { employeeId: string; title: string; dueDate?: string }) => void
+  addTask: (task: { employeeId: string; title: string; startDate?: string; dueDate?: string }) => void
   removeTask: (id: string) => void
   setTaskStatus: (id: string, status: EmployeeTask['status']) => void
   addAttachment: (taskId: string, attachment: { blobKey: string; name: string; mimeType: string; sizeBytes: number; uploadedAt: string }) => void
@@ -40,6 +45,7 @@ export function EmployeeTaskPanel({
   removeAttachment,
 }: EmployeeTaskPanelProps) {
   const [title, setTitle] = useState('')
+  const [startDate, setStartDate] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadingTaskId, setUploadingTaskId] = useState<string | null>(null)
@@ -52,8 +58,9 @@ export function EmployeeTaskPanel({
 
   function submitTask() {
     if (!title.trim()) return
-    addTask({ employeeId: employee.id, title: title.trim(), dueDate: dueDate || undefined })
+    addTask({ employeeId: employee.id, title: title.trim(), startDate: startDate || undefined, dueDate: dueDate || undefined })
     setTitle('')
+    setStartDate('')
     setDueDate('')
   }
 
@@ -116,7 +123,7 @@ export function EmployeeTaskPanel({
       <div className="space-y-2">
         {open.length === 0 && done.length === 0 && <p className="text-sm text-ink-500">Задач пока нет.</p>}
         {[...open, ...done].map((task) => {
-          const isOverdue = task.status === 'open' && task.dueDate && task.dueDate < new Date().toISOString().slice(0, 10)
+          const isOverdue = task.status === 'open' && task.dueDate && dueDateDeadline(task.dueDate) < new Date()
           return (
             <div key={task.id} className="rounded-lg border border-ink-800 px-3 py-2.5">
               <div className="flex items-start gap-2.5">
@@ -131,9 +138,10 @@ export function EmployeeTaskPanel({
                   <div className={cn('text-sm', task.status === 'done' ? 'text-ink-500 line-through' : 'text-ink-100')}>{task.title}</div>
                   {task.description && <div className="text-xs text-ink-500 mt-0.5">{task.description}</div>}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    {task.startDate && <span className="text-xs text-ink-500">Начало: {task.startDate}</span>}
                     {task.dueDate && (
                       <span className={cn('text-xs', isOverdue ? 'text-negative-500 font-medium' : 'text-ink-500')}>
-                        Срок: {task.dueDate}
+                        Срок: {formatDueDate(task.dueDate)}
                         {isOverdue && ' · просрочено'}
                       </span>
                     )}
@@ -196,14 +204,18 @@ export function EmployeeTaskPanel({
       </div>
 
       {canManage && (
-        <div className="grid sm:grid-cols-4 gap-2 items-end pt-1">
+        <div className="grid sm:grid-cols-5 gap-2 items-end pt-1">
           <div className="sm:col-span-2">
             <label className="text-xs text-ink-400 block mb-1">Новая задача</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например, сверить кассу" />
           </div>
           <div className="sm:col-span-1">
-            <label className="text-xs text-ink-400 block mb-1">Срок</label>
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <label className="text-xs text-ink-400 block mb-1">Начало</label>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="sm:col-span-1">
+            <label className="text-xs text-ink-400 block mb-1">Срок (дата и время)</label>
+            <Input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
           <Button onClick={submitTask} className="sm:col-span-1" variant="secondary">
             <Plus className="size-3.5" /> Добавить

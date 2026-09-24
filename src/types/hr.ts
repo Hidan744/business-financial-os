@@ -38,7 +38,13 @@ export interface EmployeeTask {
   employeeId: string
   title: string
   description?: string
-  dueDate?: string // 'YYYY-MM-DD'
+  /** Когда приступить к задаче — 'YYYY-MM-DD', без времени. */
+  startDate?: string
+  /**
+   * Срок сдачи. 'YYYY-MM-DD' (весь день, старые задачи и когда время не важно) или
+   * 'YYYY-MM-DDTHH:mm' (datetime-local, точный дедлайн) — формат различает наличие 'T'.
+   */
+  dueDate?: string
   status: TaskStatus
   createdAt: string // ISO
   completedAt?: string // ISO
