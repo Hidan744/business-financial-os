@@ -7,6 +7,7 @@ import {
   calculateTaxForRegime,
   calculateUsnIncomeMinusExpensesTax,
   calculateUsnIncomeTax,
+  calculateVatPayable,
 } from './tax'
 
 describe('calculateUsnIncomeTax', () => {
@@ -51,6 +52,26 @@ describe('calculateOsnProfitTax', () => {
   })
   it('is zero when EBIT is negative (no tax on a loss)', () => {
     expect(calculateOsnProfitTax(-50000, 20)).toBe(0)
+  })
+})
+
+describe('calculateVatPayable', () => {
+  it('nets output VAT against input VAT at the inclusive rate', () => {
+    // revenue and expenses are VAT-inclusive; 20% -> factor 1/6.
+    // output = 1,200,000/6 = 200,000; input = 600,000/6 = 100,000 -> payable 100,000.
+    expect(calculateVatPayable(1200000, 600000, 20)).toBeCloseTo(100000)
+  })
+
+  it('returns a negative amount (overpayment) when deductible expenses exceed revenue', () => {
+    expect(calculateVatPayable(600000, 1200000, 20)).toBeCloseTo(-100000)
+  })
+
+  it('is zero at a 0% rate regardless of amounts', () => {
+    expect(calculateVatPayable(1200000, 300000, 0)).toBe(0)
+  })
+
+  it('clamps negative revenue and expenses to zero before computing', () => {
+    expect(calculateVatPayable(-1000, -500, 20)).toBe(0)
   })
 })
 

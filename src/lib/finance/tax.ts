@@ -31,6 +31,21 @@ export function calculateOsnProfitTax(ebit: number, ratePct: number): number {
   return Math.max(0, ebit) * (ratePct / 100)
 }
 
+/**
+ * НДС к уплате = исходящий налог (с выручки) минус входящий (с расходов, по которым он к вычету).
+ * revenue и vatDeductibleExpenses считаются суммами с учётом НДС (как их вводят в остальном
+ * приложении) — поэтому налог выделяется расчётной ставкой rate/(100+rate), а не начисляется
+ * сверху. Результат может быть отрицательным — переплата (право на возврат/зачёт), а не 0.
+ * Независим от режима налога на прибыль/дохода (calculateTaxForRegime) — это отдельный налог,
+ * не альтернатива ему.
+ */
+export function calculateVatPayable(revenue: number, vatDeductibleExpenses: number, vatRatePct: number): number {
+  const factor = vatRatePct / (100 + vatRatePct)
+  const outputVat = Math.max(0, revenue) * factor
+  const inputVat = Math.max(0, vatDeductibleExpenses) * factor
+  return outputVat - inputVat
+}
+
 export interface TaxCalculationResult {
   amount: number
   /** Пояснение для конкретного режима — показывается пользователю рядом с суммой. */

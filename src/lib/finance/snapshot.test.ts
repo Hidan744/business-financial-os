@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FinancialInputs } from '@/types/finance'
-import { buildFinancialSnapshot, getFixedCosts, getVariableCosts } from './snapshot'
+import { buildFinancialSnapshot, getFixedCosts, getVariableCosts, getVatDeductibleExpenses } from './snapshot'
 
 function makeInputs(overrides: Partial<FinancialInputs> = {}): FinancialInputs {
   return {
@@ -117,6 +117,18 @@ describe('buildFinancialSnapshot — edge cases', () => {
     const snapshot = buildFinancialSnapshot(makeInputs())
     expect(Number.isFinite(snapshot.marketingEfficiencyPct)).toBe(true)
     expect(snapshot.romiPct).toBeNull()
+  })
+})
+
+describe('getVatDeductibleExpenses', () => {
+  it('sums cogs, variableOpex, rent, marketing, logistics, utilities, software and custom lines', () => {
+    expect(getVatDeductibleExpenses(makeInputs({ variableOpex: 80000 }))).toBe(720000 + 80000 + 220000 + 150000 + 180000)
+  })
+
+  it('excludes payroll, unlike getFixedCosts (salaries carry no VAT)', () => {
+    const inputs = makeInputs()
+    expect(getVatDeductibleExpenses(inputs)).toBeLessThan(getFixedCosts(inputs) + getVariableCosts(inputs))
+    expect(getFixedCosts(inputs) + getVariableCosts(inputs) - getVatDeductibleExpenses(inputs)).toBe(inputs.payroll)
   })
 })
 

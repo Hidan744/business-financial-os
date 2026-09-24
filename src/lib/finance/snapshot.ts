@@ -53,6 +53,16 @@ export function getVariableCosts(inputs: FinancialInputs): number {
   return inputs.cogs + (inputs.variableOpex ?? 0)
 }
 
+/**
+ * Расходы, по которым обычно есть входящий НДС к вычету (покупки у плательщиков НДС) — для
+ * calculateVatPayable. В отличие от getFixedCosts сюда не входит ФОТ (зарплата НДС не облагается),
+ * а также нет налогов, амортизации и процентов по кредиту (не облагаемые НДС статьи в принципе).
+ */
+export function getVatDeductibleExpenses(inputs: FinancialInputs): number {
+  const customTotal = inputs.customExpenseLines.reduce((sum, line) => sum + line.amount, 0)
+  return inputs.cogs + (inputs.variableOpex ?? 0) + inputs.rent + inputs.marketing + inputs.logistics + inputs.utilities + inputs.software + customTotal
+}
+
 export function buildFinancialSnapshot(inputs: FinancialInputs, context: SnapshotContext = {}): FinancialSnapshot {
   const grossProfit = calculateGrossProfit(inputs.revenue, inputs.cogs)
   const grossMarginPct = calculateGrossMargin(grossProfit, inputs.revenue) ?? 0

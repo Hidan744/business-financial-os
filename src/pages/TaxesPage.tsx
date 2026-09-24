@@ -2,12 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { InfoTooltip } from '@/components/ui/tooltip'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useBusinessStore } from '@/store/businessStore'
-import { getFixedCosts, getVariableCosts } from '@/lib/finance/snapshot'
-import { calculateTaxForRegime } from '@/lib/finance/tax'
+import { getFixedCosts, getVariableCosts, getVatDeductibleExpenses } from '@/lib/finance/snapshot'
+import { calculateTaxForRegime, calculateVatPayable } from '@/lib/finance/tax'
 import { TAX_REGIME_LABELS, type TaxRegime } from '@/types/tax'
 import { formatCurrency } from '@/lib/utils'
 
@@ -27,6 +28,11 @@ export function TaxesPage() {
   })
 
   const mismatch = Math.round(result.amount) !== inputs.taxes
+
+  const isVatPayer = taxSettings.isVatPayer ?? false
+  const vatRatePct = taxSettings.vatRatePct ?? 20
+  const vatDeductibleExpenses = getVatDeductibleExpenses(inputs)
+  const vatPayable = calculateVatPayable(inputs.revenue, vatDeductibleExpenses, vatRatePct)
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -176,6 +182,61 @@ export function TaxesPage() {
             </div>
           </div>
           <p className="text-xs text-ink-500">{result.note}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-1.5">
+            НДС
+            <InfoTooltip>
+              Не зависит от режима выше — считается отдельно и не входит в «Оценку» или «Финансы»: это отдельная
+              налоговая нагрузка, а не часть прибыли. Ставку укажите сами — с 2025 года часть бизнесов на УСН тоже
+              становится плательщиком НДС при превышении порога выручки, а правила меняются быстрее калькулятора,
+              так что вы точнее знаете свой актуальный статус.
+            </InfoTooltip>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2 space-y-4">
+          <label className="flex items-center gap-2 cursor-pointer w-fit">
+            <Checkbox checked={isVatPayer} onChange={() => updateTaxSettings({ isVatPayer: !isVatPayer })} />
+            <span className="text-sm text-ink-200">Я плачу НДС</span>
+          </label>
+
+          {isVatPayer && (
+            <>
+              <div className="max-w-xs">
+                <Label htmlFor="vat-rate">Ставка НДС, %</Label>
+                <Input
+                  id="vat-rate"
+                  inputMode="decimal"
+                  value={vatRatePct}
+                  onChange={(e) => {
+                    const v = Number(e.target.value.replace(',', '.'))
+                    updateTaxSettings({ vatRatePct: Number.isFinite(v) && v >= 0 ? v : 0 })
+                  }}
+                  className="mt-2"
+                />
+                <p className="text-xs text-ink-500 mt-1.5">Стандартно 20%, для отдельных категорий — 10% или 0%. Введите свою ставку.</p>
+              </div>
+
+              <div className="rounded-xl border border-ink-800 px-4 py-3">
+                <div className="text-xs text-ink-400 mb-1">
+                  {vatPayable >= 0 ? 'НДС к уплате' : 'Переплата НДС (к возврату/зачёту)'}
+                </div>
+                <div className={`text-lg font-semibold ${vatPayable >= 0 ? 'text-ink-50' : 'text-positive-500'}`}>
+                  {formatCurrency(Math.abs(vatPayable))}
+                </div>
+              </div>
+
+              <p className="text-xs text-ink-500">
+                Считается от выручки {formatCurrency(inputs.revenue)} и расходов с входящим НДС {formatCurrency(vatDeductibleExpenses)}{' '}
+                (себестоимость, аренда, реклама, логистика, коммунальные, ПО и прочие расходы — без зарплаты, налогов,
+                амортизации и процентов по кредиту, там НДС не бывает). Обе суммы считаются с учётом НДС, как вы их
+                вводите на «Финансах».
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
