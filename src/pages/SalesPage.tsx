@@ -14,6 +14,8 @@ import {
 } from '@/lib/finance/breakeven'
 import { calculateContributionMarginPct } from '@/lib/finance/formulas'
 import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils'
+import { getEffectiveModules } from '@/types/modules'
+import { PricingCalculatorCard } from '@/features/sales/PricingCalculatorCard'
 
 const WORKING_DAYS_PER_MONTH = 30
 const MONTHS_PER_YEAR = 12
@@ -22,6 +24,8 @@ export function SalesPage() {
   const { inputs, snapshot } = useFinancials()
   const cashFlowInputs = useBusinessStore((s) => s.cashFlowInputs)
   const taxSettings = useBusinessStore((s) => s.taxSettings)
+  const profile = useBusinessStore((s) => s.profile)
+  const products = useBusinessStore((s) => s.products)
   const [targetProfitInput, setTargetProfitInput] = useState('')
   const [annualTargetProfitInput, setAnnualTargetProfitInput] = useState('')
   const [minimumReserveInput, setMinimumReserveInput] = useState('')
@@ -283,6 +287,14 @@ export function SalesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <PricingCalculatorCard
+        defaultFixedCosts={getFixedCosts(inputs)}
+        products={products}
+        showProductPicker={getEffectiveModules(profile).inventory && products.length > 0}
+        isVatPayer={taxSettings.isVatPayer ?? false}
+        vatRatePct={taxSettings.vatRatePct ?? 20}
+      />
     </div>
   )
 }
