@@ -1,20 +1,28 @@
 import { useMemo } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useFinancials } from '@/hooks/useFinancials'
 import { useDiagnostics } from '@/hooks/useDiagnostics'
 import { useBusinessStore } from '@/store/businessStore'
 import { calculateScenario } from '@/lib/finance/scenario'
 import { buildFinancialSnapshot } from '@/lib/finance/snapshot'
+import { calculatePeriodGrowthPct } from '@/lib/finance/formulas'
+import { buildExpenseBreakdown, buildHistoryTrend } from '@/lib/finance/reportCharts'
 import { HEALTH_STATUS_LABELS } from '@/types/diagnostics'
-import { formatCurrency, formatPercent } from '@/lib/utils'
+import { formatCurrency, formatPercent, formatSigned } from '@/lib/utils'
+import { CATEGORICAL } from '@/lib/chartColors'
+import { ExpenseBreakdownBar } from '@/features/report/ExpenseBreakdownBar'
+import { RevenueProfitTrendChart } from '@/features/report/RevenueProfitTrendChart'
+import { MarginTrendChart } from '@/features/report/MarginTrendChart'
+import { SparklineStatTile } from '@/features/report/SparklineStatTile'
 
 export function ReportPage() {
   const { inputs, snapshot } = useFinancials()
   const diagnostics = useDiagnostics()
   const profile = useBusinessStore((s) => s.profile)
   const scenarios = useBusinessStore((s) => s.scenarios)
+  const history = useBusinessStore((s) => s.history)
 
   const scenarioResults = useMemo(() => {
     if (!inputs) return []
@@ -24,9 +32,17 @@ export function ReportPage() {
     }))
   }, [inputs, scenarios])
 
+  const trend = useMemo(() => (inputs ? buildHistoryTrend(history, inputs) : []), [history, inputs])
+  const expenseItems = useMemo(() => (inputs ? buildExpenseBreakdown(inputs) : []), [inputs])
+
   if (!inputs || !snapshot || !diagnostics || !profile) return null
 
   const generatedAt = new Date().toLocaleString('ru-RU')
+
+  const previousPoint = trend.length >= 2 ? trend[trend.length - 2] : null
+  const revenueGrowthPct = previousPoint ? calculatePeriodGrowthPct(snapshot.revenue, previousPoint.revenue) : null
+  const profitGrowthPct = previousPoint ? calculatePeriodGrowthPct(snapshot.netProfit, previousPoint.netProfit) : null
+  const cashFlowGrowthPct = previousPoint ? calculatePeriodGrowthPct(snapshot.cashFlow, previousPoint.cashFlow) : null
 
   return (
     <div className="space-y-6 max-w-3xl print:[&_*]:!bg-white print:[&_*]:!text-black print:[&_*]:!border-black/10">
@@ -53,6 +69,39 @@ export function ReportPage() {
           </p>
         </Card>
 
+        <div className="grid sm:grid-cols-3 gap-3">
+          <SparklineStatTile
+            label="Выручка"
+            value={formatCurrency(snapshot.revenue)}
+            tooltip="Все деньги, полученные от продаж за период."
+            deltaLabel={revenueGrowthPct !== null ? `${formatSigned(revenueGrowthPct, formatPercent)} к пред. периоду` : undefined}
+            accent={revenueGrowthPct === null ? 'neutral' : revenueGrowthPct >= 0 ? 'positive' : 'negative'}
+            sparkline={trend}
+            sparklineKey="revenue"
+            sparklineColor={CATEGORICAL.slot1}
+          />
+          <SparklineStatTile
+            label="Чистая прибыль"
+            value={formatCurrency(snapshot.netProfit)}
+            tooltip="То, что остаётся после всех расходов, налогов, процентов и амортизации."
+            deltaLabel={profitGrowthPct !== null ? `${formatSigned(profitGrowthPct, formatPercent)} к пред. периоду` : undefined}
+            accent={snapshot.netProfit >= 0 ? 'positive' : 'negative'}
+            sparkline={trend}
+            sparklineKey="netProfit"
+            sparklineColor={CATEGORICAL.slot3}
+          />
+          <SparklineStatTile
+            label="Cash Flow"
+            value={formatCurrency(snapshot.cashFlow)}
+            tooltip="Разница между поступлениями и расходами денег за период."
+            deltaLabel={cashFlowGrowthPct !== null ? `${formatSigned(cashFlowGrowthPct, formatPercent)} к пред. периоду` : undefined}
+            accent={snapshot.cashFlow >= 0 ? 'positive' : 'negative'}
+            sparkline={trend}
+            sparklineKey="cashFlow"
+            sparklineColor={CATEGORICAL.slot4}
+          />
+        </div>
+
         <Card className="p-5">
           <h3 className="text-sm font-semibold text-ink-200 mb-3">Ключевые показатели</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -66,6 +115,37 @@ export function ReportPage() {
             <ReportMetric label="Маржинальность" value={formatPercent(snapshot.netMarginPct)} />
           </div>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Структура расходов</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <ExpenseBreakdownBar items={expenseItems} />
+          </CardContent>
+        </Card>
+
+        {trend.length >= 2 && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Динамика выручки и прибыли</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RevenueProfitTrendChart points={trend} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Динамика маржинальности</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MarginTrendChart points={trend} />
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         <Card className="p-5">
           <h3 className="text-sm font-semibold text-ink-200 mb-3">Основные проблемы</h3>
