@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { BrandMark } from '@/components/icons/BrandMark'
 import { BusinessTypePickerModal } from '@/components/landing/BusinessTypePickerModal'
+import { NetworkGraphic } from '@/components/landing/NetworkGraphic'
 import { useBusinessStore } from '@/store/businessStore'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
@@ -189,6 +190,8 @@ export function LandingPage() {
               Смотреть демо
             </Button>
           </div>
+
+          <NetworkGraphic />
 
           <Frame label="business-financial-os.app · Dashboard" className="max-w-4xl mx-auto">
             <img
