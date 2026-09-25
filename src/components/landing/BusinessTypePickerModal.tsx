@@ -78,11 +78,11 @@ export function BusinessTypePickerModal({
                   onMouseLeave={() => setHovered(null)}
                   className={cn(
                     'text-left rounded-xl border px-5 py-4 transition-colors',
-                    hovered === type ? 'border-brand-500/60 bg-brand-500/5' : 'border-ink-800 bg-ink-950/60 hover:border-ink-700',
+                    hovered === type ? 'border-aurora-violet/60 bg-aurora-violet/5' : 'border-ink-800 bg-ink-950/60 hover:border-ink-700',
                   )}
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="flex size-9 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400 shrink-0">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-aurora-violet/15 text-aurora-blue-soft shrink-0">
                       <Icon className="size-[18px]" />
                     </div>
                     <div className="font-semibold text-ink-50 text-[15px]">{BUSINESS_TYPE_LABELS[type]}</div>

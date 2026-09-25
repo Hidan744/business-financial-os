@@ -30,6 +30,13 @@
   --color-warning-600: #c98500;
   --color-negative-500: #d03b3b;
   --color-negative-600: #a82f2f;
+
+  /* Акценты только для лендинга («аврора») — не используются в самом приложении */
+  --color-aurora-amber: #e8823c;
+  --color-aurora-amber-soft: #f2a65a;
+  --color-aurora-violet: #8b6fe8;
+  --color-aurora-blue: #4c8df0;
+  --color-aurora-blue-soft: #7db2ff;
 }
 
 @layer base {
@@ -49,6 +56,69 @@
   }
   ::selection {
     @apply bg-brand-500/30 text-white;
+  }
+}
+
+@layer components {
+  /* «Аврора» — фон и акценты лендинга. Размытые цветные пятна сверху, гаснущие к чёрному —
+     эффекты, которые неудобно выразить через Tailwind-утилиты, поэтому вынесены сюда. */
+  .aurora-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: -15% -10% 30% -10%;
+    background:
+      radial-gradient(32% 65% at 12% 0%, rgba(232, 130, 60, 0.55), transparent 72%),
+      radial-gradient(26% 60% at 38% 0%, rgba(139, 111, 232, 0.42), transparent 72%),
+      radial-gradient(30% 62% at 66% 0%, rgba(76, 141, 240, 0.5), transparent 72%),
+      radial-gradient(22% 50% at 92% 0%, rgba(76, 141, 240, 0.3), transparent 72%);
+    filter: blur(70px);
+  }
+  .aurora-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 0%, var(--color-ink-950) 82%);
+  }
+
+  /* Кнопка со светящейся градиентной рамкой — двойной background-image (непрозрачная заливка
+     padding-box поверх градиента border-box), обычной рамкой такого эффекта не добиться. */
+  .btn-aurora-glow {
+    border: 1px solid transparent;
+    background-image:
+      linear-gradient(var(--color-ink-950), var(--color-ink-950)),
+      linear-gradient(120deg, var(--color-aurora-blue), var(--color-aurora-violet) 45%, var(--color-aurora-amber-soft));
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .btn-aurora-glow:hover {
+    box-shadow: 0 6px 24px rgba(139, 111, 232, 0.35);
+    transform: translateY(-1px);
+  }
+
+  /* Глянцевая градиентная «орбита» — декоративный акцент вместо иконки/фото. */
+  .orb-aurora {
+    border-radius: 9999px;
+    background: radial-gradient(circle at 32% 28%, #ffe2bb 0%, var(--color-aurora-amber-soft) 28%, var(--color-aurora-violet) 62%, #22306e 100%);
+    box-shadow:
+      0 0 50px 6px rgba(139, 111, 232, 0.3),
+      inset -12px -14px 34px rgba(0, 0, 0, 0.45),
+      inset 10px 10px 24px rgba(255, 255, 255, 0.18);
+  }
+
+  /* Градиентный текст для номеров шагов внедрения. */
+  .text-aurora-gradient {
+    background-image: linear-gradient(120deg, var(--color-aurora-amber-soft), var(--color-aurora-violet) 60%, var(--color-aurora-blue));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
 
