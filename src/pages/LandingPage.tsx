@@ -4,11 +4,15 @@ import {
   ArrowRight,
   Bot,
   Calendar,
+  ClipboardCheck,
+  GraduationCap,
   Gauge,
   LineChart,
   Package,
   Sparkles,
   Target,
+  Upload,
+  Wand2,
   AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -64,6 +68,29 @@ const FEATURES = [
   },
 ]
 
+const IMPLEMENTATION_STEPS = [
+  {
+    icon: ClipboardCheck,
+    title: 'Аудит учёта',
+    text: 'Смотрим, как сейчас считаются деньги — в 1С, Excel или в голове — и что из этого можно перенести без потерь.',
+  },
+  {
+    icon: Upload,
+    title: 'Перенос данных из 1С/Excel',
+    text: 'Загружаем историю по периодам, товары, сотрудников — стартуете не с чистого листа, а со своими реальными цифрами.',
+  },
+  {
+    icon: Wand2,
+    title: 'Настройка AI CFO под нишу',
+    text: 'Включаем нужные модули, налоговый режим и KPI под вашу отрасль — розница, услуги, производство, кафе.',
+  },
+  {
+    icon: GraduationCap,
+    title: 'Обучение команды',
+    text: 'Показываем, где что смотреть и что проверять каждый день, — дальше команда работает в системе самостоятельно.',
+  },
+]
+
 export function LandingPage() {
   const navigate = useNavigate()
   const loadDemo = useBusinessStore((s) => s.loadDemo)
@@ -112,9 +139,10 @@ export function LandingPage() {
           <br />
           вашего бизнеса — в браузере
         </h1>
-        <p className="mt-6 text-lg text-ink-400 max-w-2xl mx-auto">
-          Анализируйте прибыль, находите точки роста, моделируйте решения и управляйте
-          финансами бизнеса в одной системе.
+        <p className="mt-6 text-lg text-ink-400 max-w-3xl mx-auto">
+          Единая система финансового и складского учёта со встроенным AI-советником.
+          Прогнозируйте кассовые разрывы, считайте юнит-экономику и управляйте задачами
+          без десятка Excel-таблиц.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button size="lg" asChild>
@@ -144,6 +172,33 @@ export function LandingPage() {
             <Card key={title} className="p-6">
               <div className="flex size-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400 mb-4">
                 <Icon className="size-5" />
+              </div>
+              <h3 className="text-base font-semibold text-ink-50 mb-2">{title}</h3>
+              <p className="text-sm text-ink-400 leading-relaxed">{text}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 pb-24">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-ink-800 bg-ink-900 px-3 py-1 text-xs text-ink-400 mb-4">
+            Внедрение под ключ
+          </div>
+          <h2 className="text-2xl lg:text-3xl font-semibold mb-3">Не просто софт — готовое решение</h2>
+          <p className="text-ink-400">
+            Переезд с 1С или Excel — это не «разбирайтесь сами». Проходим весь путь вместе с вами,
+            от первого аудита до самостоятельной работы команды.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {IMPLEMENTATION_STEPS.map(({ icon: Icon, title, text }, i) => (
+            <Card key={title} className="p-6 relative">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-400">
+                  <Icon className="size-5" />
+                </div>
+                <span className="font-display text-2xl font-bold text-ink-800">{String(i + 1).padStart(2, '0')}</span>
               </div>
               <h3 className="text-base font-semibold text-ink-50 mb-2">{title}</h3>
               <p className="text-sm text-ink-400 leading-relaxed">{text}</p>
