@@ -22,7 +22,7 @@ export const STATUS = {
 } as const
 
 export const CHART_CHROME = {
-  gridline: '#1f3450', // ink-700
-  axis: '#47607f', // ink-500
-  mutedInk: '#96a5ba', // ink-300
+  gridline: '#2a221c', // ink-700
+  axis: '#5c4e42', // ink-500
+  mutedInk: '#a89c8f', // ink-300
 } as const

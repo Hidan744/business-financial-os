@@ -11,17 +11,20 @@
   --color-brand-600: #e8622a;
   --color-brand-700: #b84a1a;
 
-  --color-ink-950: #08111f;
-  --color-ink-900: #0b1826;
-  --color-ink-800: #16273e;
-  --color-ink-700: #1f3450;
-  --color-ink-600: #2c4361;
-  --color-ink-500: #47607f;
-  --color-ink-400: #6b8099;
-  --color-ink-300: #96a5ba;
-  --color-ink-200: #c3cee0;
-  --color-ink-100: #e2e8f2;
-  --color-ink-50: #f5f7fb;
+  /* Тёплая нейтральная шкала («затмение») — вместо прежней холодной тёмно-синей.
+     950/400/200/50 подобраны под bg/ink-2/ink-1/ink-0 концепт-макета один в один,
+     остальные ступени — интерполяция между ними для плавной шкалы. */
+  --color-ink-950: #050504;
+  --color-ink-900: #0c0a08;
+  --color-ink-800: #1a1512;
+  --color-ink-700: #2a221c;
+  --color-ink-600: #3d332a;
+  --color-ink-500: #5c4e42;
+  --color-ink-400: #8c8178;
+  --color-ink-300: #a89c8f;
+  --color-ink-200: #cabfb3;
+  --color-ink-100: #e8e0d6;
+  --color-ink-50: #faf6f1;
 
   /* Статусные цвета — валидированный набор (dataviz skill), различимый на тёмной поверхности и не путается с CVD */
   --color-positive-500: #0ca30c;
