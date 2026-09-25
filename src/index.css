@@ -103,16 +103,6 @@
     transform: translateY(-1px);
   }
 
-  /* Глянцевая градиентная «орбита» — декоративный акцент вместо иконки/фото. */
-  .orb-aurora {
-    border-radius: 9999px;
-    background: radial-gradient(circle at 32% 28%, #ffe2bb 0%, var(--color-aurora-amber-soft) 28%, var(--color-aurora-violet) 62%, #22306e 100%);
-    box-shadow:
-      0 0 50px 6px rgba(139, 111, 232, 0.3),
-      inset -12px -14px 34px rgba(0, 0, 0, 0.45),
-      inset 10px 10px 24px rgba(255, 255, 255, 0.18);
-  }
-
   /* Градиентный текст для номеров шагов внедрения. */
   .text-aurora-gradient {
     background-image: linear-gradient(120deg, var(--color-aurora-amber-soft), var(--color-aurora-violet) 60%, var(--color-aurora-blue));

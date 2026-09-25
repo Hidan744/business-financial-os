@@ -223,7 +223,6 @@ export function LandingPage() {
           </SectionHead>
           <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-center">
             <div>
-              <div className="orb-aurora size-20 mb-6" />
               <p className="text-[15px] text-ink-300 leading-relaxed max-w-[34ch]">
                 Самая частая ошибка ценообразования — путать наценку (% от себестоимости) с маржой (% от цены).
                 Одна и та же прибыль в рублях даёт разные проценты в зависимости от того, что считать за 100%.
@@ -280,7 +279,6 @@ export function LandingPage() {
         </section>
 
         <section id="demo" className="max-w-2xl mx-auto px-4 pb-28 text-center scroll-mt-24">
-          <div className="orb-aurora size-28 mx-auto mb-9" />
           <h2 className="font-display text-3xl sm:text-4xl font-semibold mb-4">Посмотрите на своих цифрах</h2>
           <p className="text-ink-400 mb-8">
             Выберите тип бизнеса — покажем демо с разделами, которые реально нужны именно такому бизнесу. Без регистрации.
