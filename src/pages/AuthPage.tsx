@@ -53,8 +53,9 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 flex flex-col items-center justify-center px-4">
-      <div className="flex items-center gap-2 mb-8">
+    <div className="relative min-h-screen bg-ink-950 flex flex-col items-center justify-center px-4 overflow-hidden">
+      <div className="aurora-backdrop-app" />
+      <div className="relative flex items-center gap-2 mb-8">
         <BrandMark className="size-5 text-brand-400" />
         <span className="text-sm font-semibold text-ink-50">Business Financial OS</span>
       </div>

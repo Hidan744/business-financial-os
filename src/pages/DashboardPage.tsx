@@ -276,8 +276,8 @@ export function DashboardPage() {
           {diagnostics.actionPlan.length > 0 ? (
             <ol className="space-y-3 text-sm mb-4 flex-1">
               {diagnostics.actionPlan.slice(0, 3).map((item, i) => (
-                <li key={item.id} className="flex gap-2">
-                  <span className="text-ink-600 font-medium shrink-0">{i + 1}.</span>
+                <li key={item.id} className="flex gap-3">
+                  <span className="font-display text-lg font-bold text-brand-400 shrink-0 leading-6">{i + 1}</span>
                   <span className="text-ink-300">{item.action}</span>
                 </li>
               ))}
