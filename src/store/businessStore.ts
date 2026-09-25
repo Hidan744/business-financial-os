@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BusinessProfile } from '@/types/business'
+import type { BusinessProfile, BusinessType } from '@/types/business'
 import type { BalanceSheetInputs, CashFlowInputs, CustomExpenseLine, FinancialInputs, PeriodTarget } from '@/types/finance'
 import type { AiCfoMessage } from '@/types/ai'
 import type { Employee, EmployeeTask, PlannedHire, TaskAttachment, TaskStatus } from '@/types/hr'
@@ -58,7 +58,8 @@ interface Store {
   myAllowedDomains: TeamDomain[]
 
   hydrate: () => Promise<void>
-  loadDemo: () => Promise<void>
+  /** businessType — под какую отрасль показать демо (влияет на видимые разделы, см. getEffectiveModules). */
+  loadDemo: (businessType?: BusinessType) => Promise<void>
   /** Добавляет новый бизнес (первый — через онбординг, или ещё один через переключатель) и делает его активным. */
   completeOnboarding: (profile: BusinessProfile, financialInputs: FinancialInputs) => Promise<void>
   switchBusiness: (businessId: string) => Promise<void>
@@ -278,8 +279,8 @@ export const useBusinessStore = create<Store>((set, get) => ({
     })
   },
 
-  loadDemo: async () => {
-    const demo = createDemoBusiness()
+  loadDemo: async (businessType) => {
+    const demo = createDemoBusiness(businessType)
     const demoId = demo.profile.id
     const businesses = { ...get().businesses, [demoId]: demo }
     set({

@@ -1,4 +1,5 @@
 import type { BusinessState } from '@/lib/storage/repository'
+import type { BusinessType } from '@/types/business'
 import type { FinancialInputs } from '@/types/finance'
 import type { Product, StockMovement } from '@/types/inventory'
 import { DEFAULT_FORECAST_CONFIG, STANDARD_SCENARIOS } from '@/types/scenario'
@@ -63,14 +64,20 @@ function historicalMonth(businessId: string, period: string, revenue: number, sa
  * диагностику, план действий и предупреждение о кассовом разрыве в деле, а не на пустых
  * данных.
  */
-export function createDemoBusiness(): BusinessState {
+/**
+ * businessType переопределяет только profile.type (и тем самым — какие модули/разделы
+ * видны, см. getEffectiveModules): цифры остаются цифрами Nord Wear. Это честный способ
+ * показать "как будет выглядеть у вас" без отдельного датасета на каждую отрасль — набор
+ * видимых разделов (склад/сотрудники/unit-экономика/долги) реально меняется под тип.
+ */
+export function createDemoBusiness(businessType: BusinessType = 'retail'): BusinessState {
   const businessId = DEMO_BUSINESS_ID
 
   return {
     profile: {
       id: businessId,
       name: 'Nord Wear',
-      type: 'retail',
+      type: businessType,
       currency: 'RUB',
       period: 'month',
       employeesCount: 5,

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -11,8 +12,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { BrandMark } from '@/components/icons/BrandMark'
+import { BusinessTypePickerModal } from '@/components/landing/BusinessTypePickerModal'
 import { useBusinessStore } from '@/store/businessStore'
 import { useNavigate } from 'react-router-dom'
+import type { BusinessType } from '@/types/business'
 
 const QUESTIONS = [
   'Что происходит с вашими деньгами?',
@@ -52,9 +55,11 @@ const FEATURES = [
 export function LandingPage() {
   const navigate = useNavigate()
   const loadDemo = useBusinessStore((s) => s.loadDemo)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
-  async function handleDemo() {
-    await loadDemo()
+  async function handleSelectType(type: BusinessType) {
+    setPickerOpen(false)
+    await loadDemo(type)
     navigate('/app/dashboard')
   }
 
@@ -75,7 +80,7 @@ export function LandingPage() {
                 <span className="sm:hidden">Войти</span>
               </Link>
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleDemo} className="hidden sm:inline-flex">
+            <Button variant="ghost" size="sm" onClick={() => setPickerOpen(true)} className="hidden sm:inline-flex">
               Посмотреть демо
             </Button>
             <Button size="sm" asChild>
@@ -105,7 +110,7 @@ export function LandingPage() {
               Попробовать бесплатно <ArrowRight className="size-4" />
             </Link>
           </Button>
-          <Button size="lg" variant="secondary" onClick={handleDemo}>
+          <Button size="lg" variant="secondary" onClick={() => setPickerOpen(true)}>
             Посмотреть демо
           </Button>
         </div>
@@ -147,11 +152,13 @@ export function LandingPage() {
               Создать свой бизнес <ArrowRight className="size-4" />
             </Link>
           </Button>
-          <Button size="lg" variant="secondary" onClick={handleDemo}>
-            Открыть демо Nord Wear
+          <Button size="lg" variant="secondary" onClick={() => setPickerOpen(true)}>
+            Посмотреть демо
           </Button>
         </div>
       </section>
+
+      {pickerOpen && <BusinessTypePickerModal onSelect={handleSelectType} onClose={() => setPickerOpen(false)} />}
 
       <footer className="border-t border-ink-800 py-8">
         <div className="max-w-6xl mx-auto px-4 text-xs text-ink-500 text-center space-y-1.5">
