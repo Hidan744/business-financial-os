@@ -88,6 +88,32 @@
     background: linear-gradient(to bottom, transparent 0%, var(--color-ink-950) 82%);
   }
 
+  /* Тот же фон для страниц приложения — зафиксирован относительно окна (не сайдбара/контента),
+     приглушён под плотные таблицы и карточки с цифрами. */
+  .aurora-backdrop-app {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .aurora-backdrop-app::before {
+    content: '';
+    position: absolute;
+    inset: -10% -10% 40% -10%;
+    background:
+      radial-gradient(28% 55% at 15% 0%, rgba(232, 130, 60, 0.22), transparent 72%),
+      radial-gradient(24% 50% at 45% 0%, rgba(139, 111, 232, 0.28), transparent 72%),
+      radial-gradient(26% 52% at 78% 0%, rgba(76, 141, 240, 0.24), transparent 72%);
+    filter: blur(80px);
+  }
+  .aurora-backdrop-app::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 0%, var(--color-ink-950) 55%);
+  }
+
   /* Кнопка со светящейся градиентной рамкой — двойной background-image (непрозрачная заливка
      padding-box поверх градиента border-box), обычной рамкой такого эффекта не добиться. */
   .btn-aurora-glow {

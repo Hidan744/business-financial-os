@@ -21,7 +21,8 @@ export function AppShell() {
   }
 
   return (
-    <div className="flex min-h-screen bg-ink-950 print:bg-white print:block">
+    <div className="flex min-h-screen print:bg-white print:block">
+      <div className="aurora-backdrop-app print:hidden" />
       <Sidebar />
       <div className="flex-1 min-w-0">
         <MobileNav />
