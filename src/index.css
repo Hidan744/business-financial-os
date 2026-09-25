@@ -4,12 +4,12 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #fdf1e3;
-  --color-brand-100: #fbe0c0;
-  --color-brand-400: #e99f59;
-  --color-brand-500: #dc8940;
-  --color-brand-600: #c2732f;
-  --color-brand-700: #9c5a22;
+  --color-brand-50: #f2eefd;
+  --color-brand-100: #e1d6fa;
+  --color-brand-400: #a48cef;
+  --color-brand-500: #8b6fe8;
+  --color-brand-600: #7457d4;
+  --color-brand-700: #5c42ad;
 
   --color-ink-950: #08111f;
   --color-ink-900: #0b1826;
@@ -31,7 +31,8 @@
   --color-negative-500: #d03b3b;
   --color-negative-600: #a82f2f;
 
-  /* Акценты только для лендинга («аврора») — не используются в самом приложении */
+  /* Доп. акценты «авроры» для градиентов на лендинге и в лого — brand-* (выше) уже
+     совпадает с aurora-violet и является основным акцентным цветом всего приложения. */
   --color-aurora-amber: #e8823c;
   --color-aurora-amber-soft: #f2a65a;
   --color-aurora-violet: #8b6fe8;

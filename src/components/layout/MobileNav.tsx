@@ -24,7 +24,9 @@ export function MobileNav() {
     <div className="lg:hidden print:hidden">
       <div className="flex items-center justify-between h-14 px-4 border-b border-ink-800 bg-ink-950">
         <Link to="/" className="flex items-center gap-2">
-          <BrandMark className="size-4 text-brand-400" />
+          <div className="flex size-6 items-center justify-center rounded-md bg-linear-to-br from-aurora-amber-soft via-aurora-violet to-aurora-blue shrink-0">
+            <BrandMark className="size-3.5 text-ink-950" />
+          </div>
           <span className="text-sm font-semibold">Business Financial OS</span>
         </Link>
         <button onClick={() => setOpen(true)} aria-label="Открыть меню" className="text-ink-300">

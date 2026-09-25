@@ -30,8 +30,8 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-ink-800 bg-ink-950 h-screen sticky top-0 print:hidden">
       <Link to="/" className="flex items-center gap-2 px-5 h-16 border-b border-ink-800 hover:bg-ink-900 transition-colors">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400 shrink-0">
-          <BrandMark className="size-4" />
+        <div className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-aurora-amber-soft via-aurora-violet to-aurora-blue shrink-0">
+          <BrandMark className="size-4 text-ink-950" />
         </div>
         <div className="text-sm font-semibold text-ink-50 truncate">Business Financial OS</div>
       </Link>
