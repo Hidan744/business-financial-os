@@ -71,13 +71,21 @@ export function TeamAccessPanel({ businessId }: { businessId: string }) {
   }
 
   async function handleUpdateMemberDomains(userId: string, nextDomains: TeamDomain[]) {
-    await supabaseFinanceRepository.updateMemberAccess(businessId, userId, nextDomains)
+    const ok = await supabaseFinanceRepository.updateMemberAccess(businessId, userId, nextDomains)
+    if (!ok) {
+      setMessage('Не удалось изменить доступ — попробуйте обновить страницу и повторить.')
+      return
+    }
     await refresh()
   }
 
   async function handleRemoveMember(userId: string) {
     if (!window.confirm('Убрать доступ этому сотруднику?')) return
-    await supabaseFinanceRepository.removeMember(businessId, userId)
+    const ok = await supabaseFinanceRepository.removeMember(businessId, userId)
+    if (!ok) {
+      setMessage('Не удалось убрать доступ — попробуйте обновить страницу и повторить.')
+      return
+    }
     await refresh()
   }
 

@@ -3,9 +3,21 @@ import type { BusinessState, MultiBusinessState } from './repository'
 
 // Мок supabase-клиента: имитирует таблицу businesses в памяти с той же
 // формой ответа {data, error}, что и настоящий supabase-js query builder.
-const table: { id: string; owner_id: string; data: BusinessState }[] = []
+const table: { id: string; owner_id: string; data: BusinessState; updated_at?: string }[] = []
 const memberships: { business_id: string; user_id: string; allowed_domains: string[] }[] = []
 const currentUser = { id: 'user-1' }
+/** Позволяет тесту сымитировать временную ошибку get_business_view для конкретного id (пункт 1 ревью). */
+const forcedViewErrorIds = new Set<string>()
+/**
+ * Монотонный счётчик вместо Date.now() для updated_at в моке — два upsert() подряд в одном тесте
+ * иначе могут получить один и тот же ISO-таймстамп (миллисекундное разрешение) и тест проверки
+ * версии (пункт 3 ревью) стал бы случайно нестабильным.
+ */
+let updatedAtCounter = 0
+function nextUpdatedAt(): string {
+  updatedAtCounter += 1
+  return `v${updatedAtCounter}`
+}
 
 function makeQuery(rows: typeof table) {
   let result = [...rows]
@@ -45,6 +57,9 @@ vi.mock('@/lib/supabase/client', () => ({
         return { data: [...owned, ...member], error: null }
       }
       if (name === 'get_business_view') {
+        if (forcedViewErrorIds.has(args?.p_business_id as string)) {
+          return { data: null, error: { message: 'simulated transient network error' } }
+        }
         const row = table.find((r) => r.id === args?.p_business_id)
         return { data: row?.data ?? null, error: row ? null : { message: 'not found' } }
       }
@@ -65,13 +80,25 @@ vi.mock('@/lib/supabase/client', () => ({
     },
     from: (_name: string) => ({
       select: (..._args: unknown[]) => makeQuery(table),
-      upsert: async (rows: { id: string; owner_id: string; data: BusinessState }[]) => {
-        for (const row of rows) {
+      // Реальный Postgres обновляет updated_at триггером при каждом UPDATE (см. schema.sql) —
+      // мок делает то же самое, чтобы можно было протестировать проверку версии (пункт 3 ревью).
+      // Поддерживает и `await upsert(rows)` напрямую (старое поведение), и `upsert(rows).select(...)`
+      // (нужно save() для чтения актуального updated_at только что записанных строк).
+      upsert: (rows: { id: string; owner_id: string; data: BusinessState }[]) => {
+        const stored = rows.map((row) => {
+          const record = { ...row, updated_at: nextUpdatedAt() }
           const idx = table.findIndex((r) => r.id === row.id)
-          if (idx >= 0) table[idx] = row
-          else table.push(row)
+          if (idx >= 0) table[idx] = record
+          else table.push(record)
+          return record
+        })
+        return {
+          then: (resolve: (v: unknown) => void) => resolve({ error: null }),
+          select: (..._args: unknown[]) => ({
+            then: (resolve: (v: unknown) => void) =>
+              resolve({ data: stored.map((r) => ({ id: r.id, updated_at: r.updated_at })), error: null }),
+          }),
         }
-        return { error: null }
       },
       delete: () => ({
         in: async (_col: string, ids: string[]) => {
@@ -92,7 +119,7 @@ vi.mock('@/lib/supabase/client', () => ({
   },
 }))
 
-const { SupabaseFinanceRepository, getBusinessRole, getMyAllowedDomains } = await import('./supabaseFinanceRepository')
+const { SupabaseFinanceRepository, getBusinessRole, getMyAllowedDomains, ConcurrentSaveConflictError } = await import('./supabaseFinanceRepository')
 
 function makeBusiness(id: string, name: string): BusinessState {
   return {
@@ -146,6 +173,7 @@ describe('SupabaseFinanceRepository', () => {
   beforeEach(() => {
     table.length = 0
     memberships.length = 0
+    forcedViewErrorIds.clear()
     localStorage.clear()
   })
 
@@ -233,5 +261,62 @@ describe('SupabaseFinanceRepository', () => {
     // 'goals' requires the 'goals' domain, which this member was not granted
     const denied = await repo.saveMemberSection('b1', 'goals', [{ id: 'g1' }])
     expect(denied).toBe(false)
+  })
+
+  // Регрессия на пункт 1 ревью: временный сбой загрузки одного бизнеса раньше приводил
+  // к его удалению на сервере при следующем save() — он тихо принимался за "удалён локально".
+  it('does not delete a business on the server when load() failed to fetch it (transient error)', async () => {
+    // Уникальные id, не пересекающиеся с другими тестами файла: roleByBusinessId и
+    // lastKnownUpdatedAtByBusinessId — модульные кэши, не сбрасываются в beforeEach, и
+    // переиспользование id вроде 'b1' унаследовало бы "member"-роль из прошлого теста.
+    const repo = new SupabaseFinanceRepository()
+    await repo.save({
+      activeBusinessId: 'solo-a',
+      businesses: { 'solo-a': makeBusiness('solo-a', 'Cafe One'), 'solo-b': makeBusiness('solo-b', 'Cafe Two') },
+    })
+    expect(table).toHaveLength(2)
+
+    // Симулируем временный сбой RPC при загрузке solo-b — он не попадёт в businesses{} сессии
+    forcedViewErrorIds.add('solo-b')
+    const loaded = await repo.load()
+    expect(loaded?.businesses['solo-b']).toBeUndefined() // выпал из памяти из-за "сбоя"
+    forcedViewErrorIds.delete('solo-b') // сбой закончился, но businesses{} в сторе уже без solo-b
+
+    // Пользователь правит solo-a и это вызывает обычный save() — solo-b не должен быть удалён,
+    // хотя его и нет в переданном businesses{}, потому что load() знает, что сам не смог
+    // его прочитать, а не что пользователь его удалил.
+    await repo.save({ activeBusinessId: 'solo-a', businesses: { 'solo-a': loaded!.businesses['solo-a'] } })
+    expect(table).toHaveLength(2)
+    expect(table.some((r) => r.id === 'solo-b')).toBe(true)
+  })
+
+  // Регрессия на пункт 3 ревью: владелец писал весь JSON-блок без проверки версии — конкурентная
+  // правка в другой вкладке/устройстве тихо пропадала при следующем save().
+  it('throws ConcurrentSaveConflictError instead of silently overwriting a business changed elsewhere', async () => {
+    const repo = new SupabaseFinanceRepository()
+    await repo.save({ activeBusinessId: 'conc-a', businesses: { 'conc-a': makeBusiness('conc-a', 'Cafe One') } })
+    const loaded = await repo.load() // этот repo запомнил updated_at версии, которую видел
+
+    // Сервер меняется "в другом месте" (другая вкладка/устройство) — меняем table напрямую, в
+    // обход save() этого же repo, иначе общий модульный кэш (намеренно singleton — одна вкладка
+    // в реальности) просто синхронизировался бы сам с собой, и конфликт было бы не воспроизвести.
+    const idx = table.findIndex((r) => r.id === 'conc-a')
+    table[idx] = {
+      ...table[idx],
+      data: { ...table[idx].data, profile: { ...table[idx].data.profile, name: 'Changed elsewhere' } },
+      updated_at: nextUpdatedAt(),
+    }
+
+    // Этот repo всё ещё думает, что видел последнюю версию — его save() не должен перезаписать
+    // то, что уже на сервере, а должен сообщить о конфликте.
+    await expect(
+      repo.save({
+        activeBusinessId: 'conc-a',
+        businesses: { 'conc-a': { ...loaded!.businesses['conc-a'], profile: { ...loaded!.businesses['conc-a'].profile, name: 'From this tab' } } },
+      }),
+    ).rejects.toThrow(ConcurrentSaveConflictError)
+
+    // Правка, сделанная "в другом месте", должна остаться нетронутой.
+    expect(table.find((r) => r.id === 'conc-a')?.data.profile.name).toBe('Changed elsewhere')
   })
 })

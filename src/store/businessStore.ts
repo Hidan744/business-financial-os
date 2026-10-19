@@ -16,7 +16,7 @@ import type { ForecastConfig, Scenario } from '@/types/scenario'
 import { STANDARD_SCENARIOS, DEFAULT_FORECAST_CONFIG } from '@/types/scenario'
 import { getActiveRepository } from '@/lib/storage/activeRepository'
 import type { BusinessState, MultiBusinessState } from '@/lib/storage/repository'
-import { getBusinessRole, getMyAllowedDomains, supabaseFinanceRepository } from '@/lib/storage/supabaseFinanceRepository'
+import { ConcurrentSaveConflictError, getBusinessRole, getMyAllowedDomains, supabaseFinanceRepository } from '@/lib/storage/supabaseFinanceRepository'
 import { createDemoBusiness } from '@/lib/demo/demoBusiness'
 import { emptyBalanceSheet } from '@/lib/finance/balanceSheet'
 import { generateId } from '@/lib/id'
@@ -185,7 +185,18 @@ function deriveBusinessList(businesses: Record<string, BusinessState>): Business
 async function persist(get: () => Store) {
   const { businesses, activeBusinessId } = get()
   const state: MultiBusinessState = { activeBusinessId, businesses }
-  await getActiveRepository().save(state)
+  try {
+    await getActiveRepository().save(state)
+  } catch (e) {
+    // Конфликт версий (см. ConcurrentSaveConflictError) — сервер отказался молча перезаписать
+    // бизнес, изменённый в другом месте. Единственное безопасное действие отсюда — явно
+    // сказать пользователю, а не потерять его правку тихо (см. reviews/2026-10-19-review.md, п.3).
+    if (e instanceof ConcurrentSaveConflictError) {
+      window.alert(e.message)
+      return
+    }
+    throw e
+  }
 }
 
 /** Обновляет данные активного бизнеса, пересчитывает производные поля и сохраняет. */

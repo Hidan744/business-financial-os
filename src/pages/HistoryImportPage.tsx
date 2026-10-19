@@ -44,6 +44,17 @@ export function HistoryImportPage() {
       const { records, warnings: w } = await parseHistoricalExcelFile(file, profile!.id)
       setWarnings(w)
       if (records.length > 0) {
+        // Период из файла может совпасть с уже существующей записью истории (ручной ввод или
+        // более ранний импорт) — importHistoricalRecords() в этом случае молча её заменит,
+        // поэтому конфликт нужно показать и подтвердить ДО вызова, а не после (пункт 6 ревью).
+        const existingPeriods = new Set(history.map((h) => h.period))
+        const conflicting = records.filter((r) => existingPeriods.has(r.period)).map((r) => formatPeriodLabel(r.period))
+        if (conflicting.length > 0) {
+          const proceed = window.confirm(
+            `В файле есть периоды, которые уже есть в истории: ${conflicting.join(', ')}. Их текущие данные будут заменены значениями из файла. Продолжить?`,
+          )
+          if (!proceed) return
+        }
         await importHistoricalRecords(records)
         setImportedCount(records.length)
       }

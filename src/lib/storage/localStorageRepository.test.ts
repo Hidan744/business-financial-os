@@ -112,6 +112,21 @@ describe('LocalStorageFinanceRepository', () => {
     expect(localStorage.getItem('bfos:state:v2')).not.toBeNull()
   })
 
+  // Регрессия на пункт 4 ревью: повреждённая запись раньше была неотличима от "данных
+  // никогда не было", и следующий же save() стирал её безвозвратно.
+  it('backs up a corrupted record instead of treating it as "no data"', async () => {
+    localStorage.setItem('bfos:state:v2', '{this is not valid json')
+    const repo = new LocalStorageFinanceRepository()
+
+    const loaded = await repo.load()
+    expect(loaded).toBeNull() // вызывающий код по-прежнему видит "нет данных"...
+
+    // ...но исходная строка не потеряна — она сохранена под резервным ключом.
+    const backupKey = Object.keys(localStorage).find((k) => k.startsWith('bfos:state:v2:corrupted:'))
+    expect(backupKey).toBeDefined()
+    expect(localStorage.getItem(backupKey!)).toBe('{this is not valid json')
+  })
+
   it('clear() removes both the current and legacy keys', async () => {
     localStorage.setItem('bfos:state:v1', JSON.stringify(makeLegacyBusinessState()))
     localStorage.setItem('bfos:state:v2', JSON.stringify({ activeBusinessId: null, businesses: {} }))
